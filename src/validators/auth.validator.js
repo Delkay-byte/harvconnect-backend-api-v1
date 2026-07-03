@@ -1,5 +1,6 @@
 // src/validators/auth.validator.js
 const { body, validationResult } = require("express-validator");
+const ROLES = require("../constants/roles");
 
 const validateRegister = [
   body("fullName").trim().notEmpty().withMessage("Full name is required"),
@@ -18,25 +19,23 @@ const validateRegister = [
     .withMessage("Must contain a special character"),
 
   body("role")
-    .isIn(["FARMER", "BUYER", "TRANSPORT"])
+    .isIn([ROLES.FARMER, ROLES.BUYER, ROLES.TRANSPORT])
     .withMessage("Invalid role"),
 
-  // Conditional Validation: Only fires if role is TRANSPORT
   body("vehicleType")
-    .if(body("role").equals("TRANSPORT"))
+    .if(body("role").equals(ROLES.TRANSPORT))
     .notEmpty()
     .withMessage("Vehicle type is required for transport providers.")
     .isIn(["MOTORBIKE", "TRICYCLE", "PICKUP", "MINI_TRUCK", "TRUCK", "OTHER"])
     .withMessage("Invalid vehicle type."),
 
   body("capacity")
-    .if(body("role").equals("TRANSPORT"))
+    .if(body("role").equals(ROLES.TRANSPORT))
     .notEmpty()
     .withMessage("Capacity is required for transport providers.")
     .isFloat({ min: 1 })
     .withMessage("Capacity must be a positive number."),
 
-  // Middleware to handle errors
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

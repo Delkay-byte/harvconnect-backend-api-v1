@@ -1,13 +1,10 @@
 const express = require("express");
-
 const router = express.Router();
+const authMiddleware = require("../middleware/auth.middleware");
+const { placeOrder, changeStatus, getMyOrders } = require("../controllers/orderController");
 
-router.get("/test", (req, res) => {
-  res.status(200).json({
-    success: true,
-    module: req.baseUrl,
-    message: `${req.baseUrl} module is connected successfully.`,
-  });
-});
+router.get("/", authMiddleware, getMyOrders);
+router.post("/", authMiddleware, placeOrder);
+router.patch("/:id/status", authMiddleware, changeStatus);
 
 module.exports = router;

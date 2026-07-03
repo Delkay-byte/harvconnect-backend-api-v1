@@ -5,7 +5,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "test": "jest --detectOpenHandles"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
@@ -18,14 +19,18 @@
     "helmet": "^7.2.0",
     "joi": "^18.2.3",
     "jsonwebtoken": "^9.0.3",
-    "morgan": "^1.11.0"
+    "morgan": "^1.11.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "eslint": "8.57.0",
+    "jest": "^30.4.2",
     "nodemon": "3.1.4",
     "prisma": "6.19.3",
+    "supertest": "^7.2.2",
     "tsx": "^4.22.5",
     "typescript": "^6.0.3"
   }

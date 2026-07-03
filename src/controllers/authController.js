@@ -1,34 +1,35 @@
-// src/controllers/authController.js
 const authService = require("../services/authService");
+const prisma = require("../config/prisma");
 const asyncHandler = require("../utils/asyncHandler");
+const MESSAGES = require("../constants/messages");
+const AppError = require("../utils/AppError");
 
 const register = asyncHandler(async (req, res) => {
-  const user = await authService.registerUser(req.body);
-
-  // We remove the password from the response for security
-  user.password = undefined;
+  const safeUser = await authService.registerUser(req.body);
 
   res.status(201).json({
     success: true,
-    message: "User registered successfully.",
-    data: user,
+    message: MESSAGES.REGISTER_SUCCESS,
+    data: {
+      user: safeUser,
+    },
   });
 });
 
 const login = asyncHandler(async (req, res) => {
-  // Assuming your authService.loginUser returns the token and user data
-  const { token, user } = await authService.loginUser(req.body);
+  const { user, token } = await authService.loginUser(req.body);
 
   res.status(200).json({
     success: true,
-    message: "Login successful.",
-    token,
-    data: user,
+    message: MESSAGES.LOGIN_SUCCESS,
+    data: {
+      token,
+      user,
+    },
   });
 });
 
 const getMe = asyncHandler(async (req, res) => {
-  // req.user.id comes from the decoded JWT in the authMiddleware
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
     include: {
@@ -39,18 +40,32 @@ const getMe = asyncHandler(async (req, res) => {
   });
 
   if (!user) {
-    throw new AppError("User not found.", 404);
+    throw new AppError(MESSAGES.USER_NOT_FOUND, 404);
   }
 
-  // Never leak the password hash to the client
-  user.password = undefined;
+  const { password, ...safeUser } = user;
 
   res.status(200).json({
     success: true,
-    message: "User profile retrieved successfully.",
-    data: user,
+    message: MESSAGES.PROFILE_FETCH_SUCCESS,
+    data: safeUser,
   });
 });
 
-// Now the names match exactly what is defined above
-module.exports = { register, login, getMe };
+const deactivateAccount = asyncHandler(async (req, res) => {
+  // I am pulling the ID directly from the JWT token so a user can only delete their own account
+  await authService.deleteAccount(req.user.id);
+
+  res.status(200).json({
+    success: true,
+    message:
+      "Your account has been successfully deleted. We are sorry to see you go.",
+  });
+});
+
+module.exports = {
+  register,
+  login,
+  getMe,
+  deactivateAccount,
+};

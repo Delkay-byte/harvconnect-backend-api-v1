@@ -1,12 +1,15 @@
 // src/constants/commodities.js
-module.exports = [
-    "Tomatoes (local)",
-    "Tomatoes (hybrid)",
-    "Pepper",
-    "Okra",
-    "Garden Eggs",
-    "Cabbage",
-    "Lettuce",
-    "Cucumber",
-    "Onion"
-];
+
+const COMMODITIES = {
+  TOMATO_LOCAL: "TOMATO_LOCAL",
+  TOMATO_HYBRID: "TOMATO_HYBRID",
+  PEPPER: "PEPPER",
+  OKRA: "OKRA",
+  GARDEN_EGGS: "GARDEN_EGGS",
+  CABBAGE: "CABBAGE",
+  LETTUCE: "LETTUCE",
+  CUCUMBER: "CUCUMBER",
+  ONION: "ONION",
+};
+
+module.exports = COMMODITIES;

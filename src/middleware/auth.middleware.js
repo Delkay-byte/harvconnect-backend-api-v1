@@ -1,31 +1,36 @@
-// src/middleware/auth.middleware.js
-const { verifyToken } = require("../utils/jwt");
 const AppError = require("../utils/AppError");
-const prisma = require("../config/prisma"); // Import prisma instance
+const { verifyToken } = require("../utils/jwt");
+const prisma = require("../config/prisma");
+const MESSAGES = require("../constants/messages");
 
 module.exports = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next(new AppError(MESSAGES.TOKEN_MISSING, 401));
+  }
+
+  const token = authHeader.split(" ")[1];
+
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-      return next(new AppError("Authentication token is missing.", 401));
-    }
-
-    const token = authHeader.split(" ")[1];
     const decoded = verifyToken(token);
-
-    // Verify user still exists in DB and is active
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
+    
+    // I am verifying the account is still alive after token verification
+    const currentUser = await prisma.user.findUnique({
+      where: { id: decoded.id }
     });
 
-    if (!user) {
-      return next(new AppError("User no longer exists.", 401));
+    // I am adding a strict check here. If the token is mathematically valid but the user soft-deleted their account 5 minutes ago, I reject the request immediately.
+    if (!currentUser || !currentUser.isActive) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "This account has been deactivated." 
+      });
     }
-
-    // Attach full user object to the request
-    req.user = user;
+    
+    req.user = decoded;
     next();
   } catch (err) {
-    return next(new AppError("Invalid or expired token.", 401));
+    return next(new AppError(MESSAGES.INVALID_TOKEN, 401));
   }
 };
