@@ -15,6 +15,15 @@ enum Role {
   TRANSPORT
 }
 
+enum VehicleType {
+  MOTORBIKE
+  TRICYCLE
+  PICKUP
+  MINI_TRUCK
+  TRUCK
+  OTHER
+}
+
 enum OrderStatus {
   PENDING
   ACCEPTED
@@ -22,18 +31,34 @@ enum OrderStatus {
   COMPLETED
 }
 
-model User {
-  id       String  @id @default(uuid())
-  fullName String
-  email    String? @unique
-  phone    String  @unique
-  password String
-  role     Role
+enum Commodity {
+  TOMATO_LOCAL
+  TOMATO_HYBRID
+  PEPPER
+  OKRA
+  GARDEN_EGGS
+  CABBAGE
+  LETTUCE
+  CUCUMBER
+  ONION
+}
 
-  farmerProfile FarmerProfile?
-  buyerProfile  BuyerProfile?
-  products      Product[]
-  orders        Order[]
+model User {
+  id         String    @id @default(uuid())
+  fullName   String
+  email      String    @unique
+  phone      String    @unique
+  password   String
+  role       Role
+  isVerified Boolean   @default(false)
+  lastLogin  DateTime?
+
+  farmerProfile    FarmerProfile?
+  buyerProfile     BuyerProfile?
+  transportProfile TransportProfile?
+
+  products Product[]
+  orders   Order[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -45,17 +70,19 @@ model FarmerProfile {
   bio       String?
   latitude  Float?
   longitude Float?
+  address   String?
 
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([latitude, longitude])
 }
 
 model BuyerProfile {
   id              String  @id @default(uuid())
-  companyName     String?
   deliveryAddress String?
   latitude        Float?
   longitude       Float?
@@ -67,34 +94,75 @@ model BuyerProfile {
   updatedAt DateTime @updatedAt
 }
 
-model Product {
-  id        String  @id @default(uuid())
-  name      String
-  category  String
-  quantity  Float
-  price     Float
-  unit      String
-  imageUrl  String?
-  available Boolean @default(true)
+model TransportProfile {
+  id             String      @id @default(uuid())
+  vehicleType    VehicleType
+  capacity       Float
+  latitude       Float?
+  longitude      Float?
+  currentAddress String?
+  available      Boolean     @default(true)
 
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([available])
+}
+
+model Product {
+  id          String    @id @default(uuid())
+  name        String
+  category    Commodity
+  quantity    Decimal
+  price       Decimal
+  unit        String
+  imageUrl    String?
+  available   Boolean   @default(true)
   harvestDate DateTime?
   description String?
 
-  farmerId String
-  farmer   User   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farmerId  String
+  farmer    User     @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([available])
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  quantity    Float
+  totalPrice  Decimal
+  transportId String?
+  status      OrderStatus @default(PENDING)
+
+  buyerId String
+  buyer   User   @relation(fields: [buyerId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Order {
-  id String @id @default(uuid())
-
-  buyerId String
-  buyer   User   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-
-  status OrderStatus @default(PENDING)
-
+model VerificationToken {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

@@ -1,32 +1,25 @@
-require("dotenv").config();
-
+// src/server.js
 const app = require("./app");
+const prisma = require("./config/prisma");
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
-const server = app.listen(PORT, () => {
-  console.log(`
-====================================
-🚜 HarvConnect API Started
-====================================
-Environment : ${process.env.NODE_ENV || "development"}
-Port        : ${PORT}
-====================================
-`);
-});
+async function startServer() {
+  try {
+    // Test database connection before booting the server
+    await prisma.$connect();
+    console.log("🚀 Database connected successfully via Prisma.");
 
-process.on("unhandledRejection", (err) => {
-  console.error("Unhandled Rejection:", err);
-
-  server.close(() => {
+    app.listen(PORT, () => {
+      console.log(`🚜 HarvConnect backend spinning up on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error(
+      "❌ Failed to start the server due to DB connection error:",
+      error,
+    );
     process.exit(1);
-  });
-});
+  }
+}
 
-process.on("SIGINT", () => {
-  console.log("\nShutting down server...");
-
-  server.close(() => {
-    process.exit(0);
-  });
-});
+startServer();
