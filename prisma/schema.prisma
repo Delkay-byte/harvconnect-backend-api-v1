@@ -1,13 +1,100 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// prisma/schema.prisma
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  FARMER
+  BUYER
+  TRANSPORT
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+}
+
+model User {
+  id       String  @id @default(uuid())
+  fullName String
+  email    String? @unique
+  phone    String  @unique
+  password String
+  role     Role
+
+  farmerProfile FarmerProfile?
+  buyerProfile  BuyerProfile?
+  products      Product[]
+  orders        Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FarmerProfile {
+  id        String  @id @default(uuid())
+  farmName  String?
+  bio       String?
+  latitude  Float?
+  longitude Float?
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BuyerProfile {
+  id              String  @id @default(uuid())
+  companyName     String?
+  deliveryAddress String?
+  latitude        Float?
+  longitude       Float?
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id        String  @id @default(uuid())
+  name      String
+  category  String
+  quantity  Float
+  price     Float
+  unit      String
+  imageUrl  String?
+  available Boolean @default(true)
+
+  harvestDate DateTime?
+  description String?
+
+  farmerId String
+  farmer   User   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id String @id @default(uuid())
+
+  buyerId String
+  buyer   User   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  status OrderStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
