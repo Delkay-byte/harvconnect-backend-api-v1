@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --detectOpenHandles"
+    "test": "jest --detectOpenHandles",
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",

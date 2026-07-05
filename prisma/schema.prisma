@@ -36,6 +36,9 @@ model User {
   ordersAsBuyer         Order[]            @relation("BuyerOrders")
   ordersAsFarmer        Order[]            @relation("FarmerOrders")
   ordersAsTransporter   Order[]            @relation("TransporterOrders")
+
+  reviewsAsBuyer        Review[]           @relation("BuyerReviews")
+  reviewsAsFarmer       Review[]           @relation("FarmerReviews")
 }
 
 model FarmerProfile {
@@ -182,6 +185,23 @@ model AuthToken {
   @@index([type])
   @@index([expiresAt])
   @@index([userId, type])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String?
+  buyerId   String
+  farmerId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buyer     User     @relation("BuyerReviews", fields: [buyerId], references: [id], onDelete: Cascade)
+  farmer    User     @relation("FarmerReviews", fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@unique([buyerId, farmerId])
+  @@index([farmerId])
+  @@index([buyerId])
 }
 
 model spatial_ref_sys {

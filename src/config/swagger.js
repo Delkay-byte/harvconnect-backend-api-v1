@@ -1030,6 +1030,331 @@ const options = {
       },
 
       // ===================================================================
+      // PAYMENTS
+      // ===================================================================
+
+      "/api/v1/payments/momo": {
+        post: {
+          tags: ["Payments"],
+          summary: "Request Mobile Money payment",
+          description:
+            "Initiates a mock mobile money payment transaction. Requires authentication.",
+          security: [
+            {
+              bearerAuth: [],
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["phoneNumber", "amount", "network"],
+                  properties: {
+                    phoneNumber: {
+                      type: "string",
+                      example: "+233240000000",
+                    },
+                    amount: {
+                      type: "number",
+                      example: 150.0,
+                    },
+                    network: {
+                      type: "string",
+                      enum: ["MTN", "Vodafone", "AirtelTigo"],
+                      example: "MTN",
+                    },
+                    reference: {
+                      type: "string",
+                      example: "ORD-1234",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: "Payment processed successfully.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      message: { type: "string", example: "Payment successful" },
+                      data: {
+                        type: "object",
+                        properties: {
+                          transactionId: { type: "string", example: "MOMO-1234567890-ABC123" },
+                          network: { type: "string", example: "MTN" },
+                          amount: { type: "number", example: 150.0 },
+                          currency: { type: "string", example: "GHS" },
+                          status: { type: "string", example: "COMPLETED" },
+                          timestamp: { type: "string", format: "date-time" },
+                          reference: { type: "string", example: "ORD-1234" },
+                          phoneNumber: { type: "string", example: "+233240000000" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            400: {
+              description: "Validation failed.",
+            },
+            401: {
+              description: "Unauthorized. Token missing or invalid.",
+            },
+          },
+        },
+      },
+
+      // ===================================================================
+      // REVIEWS
+      // ===================================================================
+
+      "/api/v1/reviews": {
+        post: {
+          tags: ["Reviews"],
+          summary: "Create or update a review for a farmer",
+          description:
+            "Allows buyers to rate and review farmers. Requires BUYER role. A buyer can only have one review per farmer; subsequent submissions update the existing review.",
+          security: [
+            {
+              bearerAuth: [],
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["farmerId", "rating"],
+                  properties: {
+                    farmerId: {
+                      type: "string",
+                      format: "uuid",
+                      example: "123e4567-e89b-12d3-a456-426614174000",
+                    },
+                    rating: {
+                      type: "integer",
+                      minimum: 1,
+                      maximum: 5,
+                      example: 5,
+                    },
+                    comment: {
+                      type: "string",
+                      example: "Excellent quality produce, very fresh!",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            201: {
+              description: "Review created or updated successfully.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      message: { type: "string", example: "Review submitted successfully" },
+                      data: {
+                        type: "object",
+                        properties: {
+                          id: { type: "string", format: "uuid" },
+                          rating: { type: "integer", example: 5 },
+                          comment: { type: "string", example: "Excellent quality produce" },
+                          buyerId: { type: "string", format: "uuid" },
+                          farmerId: { type: "string", format: "uuid" },
+                          createdAt: { type: "string", format: "date-time" },
+                          updatedAt: { type: "string", format: "date-time" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            400: {
+              description: "Validation failed.",
+            },
+            403: {
+              description: "Only buyers can submit reviews.",
+            },
+          },
+        },
+      },
+
+      "/api/v1/reviews/farmer/{farmerId}": {
+        get: {
+          tags: ["Reviews"],
+          summary: "Get reviews for a farmer",
+          description:
+            "Retrieves paginated reviews for a specific farmer. Public endpoint.",
+          parameters: [
+            {
+              name: "farmerId",
+              in: "path",
+              required: true,
+              description: "UUID of the farmer.",
+              schema: {
+                type: "string",
+                format: "uuid",
+              },
+            },
+            {
+              name: "page",
+              in: "query",
+              schema: {
+                type: "integer",
+                default: 1,
+              },
+            },
+            {
+              name: "limit",
+              in: "query",
+              schema: {
+                type: "integer",
+                default: 10,
+              },
+            },
+          ],
+          responses: {
+            200: {
+              description: "Reviews retrieved successfully.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      message: { type: "string", example: "Reviews retrieved successfully" },
+                      data: {
+                        type: "object",
+                        properties: {
+                          reviews: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                            },
+                          },
+                          pagination: {
+                            type: "object",
+                            properties: {
+                              page: { type: "integer", example: 1 },
+                              limit: { type: "integer", example: 10 },
+                              total: { type: "integer", example: 25 },
+                              totalPages: { type: "integer", example: 3 },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            404: {
+              description: "Farmer not found.",
+            },
+          },
+        },
+      },
+
+      "/api/v1/reviews/farmer/{farmerId}/rating": {
+        get: {
+          tags: ["Reviews"],
+          summary: "Get average rating for a farmer",
+          description:
+            "Retrieves the average rating and total review count for a specific farmer. Public endpoint.",
+          parameters: [
+            {
+              name: "farmerId",
+              in: "path",
+              required: true,
+              description: "UUID of the farmer.",
+              schema: {
+                type: "string",
+                format: "uuid",
+              },
+            },
+          ],
+          responses: {
+            200: {
+              description: "Average rating retrieved successfully.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      message: { type: "string", example: "Average rating retrieved successfully" },
+                      data: {
+                        type: "object",
+                        properties: {
+                          averageRating: { type: "number", example: 4.5 },
+                          totalReviews: { type: "integer", example: 25 },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            404: {
+              description: "Farmer not found.",
+            },
+          },
+        },
+      },
+
+      "/api/v1/reviews/my-reviews": {
+        get: {
+          tags: ["Reviews"],
+          summary: "Get buyer's own reviews",
+          description:
+            "Retrieves all reviews submitted by the authenticated buyer. Requires BUYER role.",
+          security: [
+            {
+              bearerAuth: [],
+            },
+          ],
+          responses: {
+            200: {
+              description: "Your reviews retrieved successfully.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      message: { type: "string", example: "Your reviews retrieved successfully" },
+                      data: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            403: {
+              description: "Only buyers can access this endpoint.",
+            },
+          },
+        },
+      },
+
+      // ===================================================================
       // HEALTH
       // ===================================================================
 
