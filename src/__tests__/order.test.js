@@ -1,18 +1,32 @@
 const request = require("supertest");
 const app = require("../app");
 const prisma = require("../config/prisma");
+const resetDatabase = require("../test/helpers/resetDatabase");
+
+// Helper function to verify user email
+const verifyUserEmail = async (email) => {
+  const tokenRecord = await prisma.authToken.findFirst({
+    where: {
+      type: "VERIFY_EMAIL",
+      user: { email },
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+  });
+
+  if (tokenRecord) {
+    await request(app)
+      .post("/api/v1/auth/verify-email")
+      .send({ token: tokenRecord.token });
+  }
+};
 
 describe("HarvConnect API - Order & Inventory Tests", () => {
   let farmerToken, buyerToken, testProduct, farmer, buyer;
 
   // Set up a pristine database state before running tests
   beforeAll(async () => {
-    // Order matters here due to foreign keys. Delete child records first.
-    await prisma.order.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.farmerProfile.deleteMany({});
-    await prisma.buyerProfile.deleteMany({});
-    await prisma.user.deleteMany({});
+    await resetDatabase();
 
     // 1. Create a Farmer
     const farmerRes = await request(app).post("/api/v1/auth/register").send({
@@ -23,6 +37,9 @@ describe("HarvConnect API - Order & Inventory Tests", () => {
       role: "FARMER",
     });
     farmer = farmerRes.body.data.user;
+
+    // Verify farmer email before login
+    await verifyUserEmail("farmer@test.com");
 
     const farmerLogin = await request(app).post("/api/v1/auth/login").send({
       email: "farmer@test.com",
@@ -39,6 +56,9 @@ describe("HarvConnect API - Order & Inventory Tests", () => {
       role: "BUYER",
     });
     buyer = buyerRes.body.data.user;
+
+    // Verify buyer email before login
+    await verifyUserEmail("buyer@test.com");
 
     const buyerLogin = await request(app).post("/api/v1/auth/login").send({
       email: "buyer@test.com",
@@ -77,7 +97,6 @@ describe("HarvConnect API - Order & Inventory Tests", () => {
           deliveryAddress: "Accra Central",
         });
 
-      console.log("Order response:", orderRes.body);
       expect(orderRes.status).toBe(201);
       expect(orderRes.body.success).toBe(true);
       expect(orderRes.body.data.status).toBe("PENDING");

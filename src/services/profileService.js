@@ -1,4 +1,5 @@
 const prisma = require("../config/prisma");
+const AppError = require("../utils/AppError");
 
 const upsertFarmerProfile = async (userId, updateData) => {
   const data = {};
@@ -62,7 +63,23 @@ const upsertBuyerProfile = async (userId, updateData) => {
   });
 };
 
+const getBuyerProfile = async (userId) => {
+  const buyerProfile = await prisma.buyerProfile.findUnique({
+    where: { userId },
+  });
+
+  if (!buyerProfile || !buyerProfile.latitude || !buyerProfile.longitude) {
+    throw new AppError(
+      "Please complete your profile with a delivery location first.",
+      400,
+    );
+  }
+
+  return buyerProfile;
+};
+
 module.exports = {
   upsertFarmerProfile,
   upsertBuyerProfile,
+  getBuyerProfile,
 };

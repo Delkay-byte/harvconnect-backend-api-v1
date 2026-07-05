@@ -2,11 +2,6 @@ const asyncHandler = require("../utils/asyncHandler");
 const orderService = require("../services/orderService");
 
 const placeOrder = asyncHandler(async (req, res) => {
-  // Only buyers should be placing orders
-  if (req.user.role !== "BUYER") {
-    return res.status(403).json({ success: false, message: "Only buyers can place orders." });
-  }
-
   const order = await orderService.createOrder(req.user.id, req.body);
   
   res.status(201).json({ success: true, data: order });

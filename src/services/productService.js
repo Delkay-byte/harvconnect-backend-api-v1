@@ -81,8 +81,8 @@ const createProduct = async (userId, productData) => {
     data: {
       name: productData.name.trim(),
       category: productData.category.trim().toUpperCase(),
-      quantity: productData.quantity.toString(),
-      price: productData.price.toString(),
+      quantity: productData.quantity,
+      price: productData.price,
       unit: productData.unit.trim().toUpperCase(),
       description: productData.description?.trim() || null,
       harvestDate: productData.harvestDate

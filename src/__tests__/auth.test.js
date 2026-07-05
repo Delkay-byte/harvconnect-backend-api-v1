@@ -1,16 +1,30 @@
 const request = require("supertest");
 const app = require("../app");
 const prisma = require("../config/prisma");
+const resetDatabase = require("../test/helpers/resetDatabase");
+
+// Helper function to verify user email
+const verifyUserEmail = async (email) => {
+  const tokenRecord = await prisma.authToken.findFirst({
+    where: {
+      type: "VERIFY_EMAIL",
+      user: { email },
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+  });
+
+  if (tokenRecord) {
+    await request(app)
+      .post("/api/v1/auth/verify-email")
+      .send({ token: tokenRecord.token });
+  }
+};
 
 describe("HarvConnect API - Authentication Tests", () => {
   // Clear out the user ledger before starting the test suite so old data doesn't break things
   beforeAll(async () => {
-    await prisma.order.deleteMany({});
-    await prisma.product.deleteMany({});
-    await prisma.farmerProfile.deleteMany({});
-    await prisma.buyerProfile.deleteMany({});
-    await prisma.transportProfile.deleteMany({});
-    await prisma.user.deleteMany({});
+    await resetDatabase();
   }, 10000);
 
   // Disconnect from Postgres completely once all tests finish to prevent Jest from hanging
@@ -53,6 +67,9 @@ describe("HarvConnect API - Authentication Tests", () => {
 
   describe("POST /api/v1/auth/login", () => {
     it("should authenticate the user and return a signed JWT token", async () => {
+      // First verify the user's email before logging in
+      await verifyUserEmail(testUser.email);
+      
       const response = await request(app).post("/api/v1/auth/login").send({
         email: testUser.email,
         password: testUser.password,
@@ -76,7 +93,7 @@ describe("HarvConnect API - Authentication Tests", () => {
     });
   });
 
-  describe("DELETE /api/v1/auth/account", () => {
+  describe("DELETE /api/v1/auth/delete", () => {
     it("should soft-delete the authenticated user's account", async () => {
       // 1. Log in to get a fresh token for our test user
       const loginRes = await request(app).post("/api/v1/auth/login").send({
@@ -88,7 +105,7 @@ describe("HarvConnect API - Authentication Tests", () => {
 
       // 2. Hit the delete endpoint with that token
       const deleteRes = await request(app)
-        .delete("/api/v1/auth/account")
+        .delete("/api/v1/auth/delete")
         .set("Authorization", `Bearer ${token}`);
 
       expect(deleteRes.status).toBe(200);

@@ -8,141 +8,195 @@ datasource db {
 }
 
 model User {
-  id               String            @id @default(uuid())
-  fullName         String
-  email            String            @unique
-  phone            String            @unique
-  password         String
-  role             Role
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  isVerified       Boolean           @default(false)
-  lastLogin        DateTime?
-  buyerProfile     BuyerProfile?
-  farmerProfile    FarmerProfile?
-  isActive  Boolean   @default(true)
-  deletedAt DateTime?
-  ordersAsBuyer       Order[] @relation("BuyerOrders")
-  ordersAsFarmer      Order[] @relation("FarmerOrders")
-  ordersAsTransporter Order[] @relation("TransporterOrders")
-  products         Product[]
-  transportProfile TransportProfile?
+  id                    String             @id @default(uuid())
+  fullName              String
+  email                 String             @unique
+  phone                 String             @unique
+  password              String
+  role                  Role
+
+  isActive              Boolean            @default(true)
+  isVerified            Boolean            @default(false)
+  emailVerifiedAt       DateTime?
+  lastLogin             DateTime?
+  lastPasswordResetAt   DateTime?
+  deletedAt             DateTime?
+
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  buyerProfile          BuyerProfile?
+  farmerProfile         FarmerProfile?
+  transportProfile      TransportProfile?
+
+  authTokens            AuthToken[]
+
+  products              Product[]
+
+  ordersAsBuyer         Order[]            @relation("BuyerOrders")
+  ordersAsFarmer        Order[]            @relation("FarmerOrders")
+  ordersAsTransporter   Order[]            @relation("TransporterOrders")
 }
 
 model FarmerProfile {
-  id        String   @id @default(uuid())
-  farmName  String?
-  bio       String?
-  latitude  Float?
-  longitude Float?
-  userId    String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  address   String?
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String    @id @default(uuid())
+  userId      String    @unique
+
+  farmName    String?
+  bio         String?
+  address     String?
+
+  latitude    Float?
+  longitude   Float?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([latitude, longitude])
 }
 
 model BuyerProfile {
-  id              String   @id @default(uuid())
-  deliveryAddress String?
-  latitude        Float?
-  longitude       Float?
-  userId          String   @unique
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String    @id @default(uuid())
+  userId            String    @unique
+
+  deliveryAddress   String?
+
+  latitude          Float?
+  longitude         Float?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([latitude, longitude])
 }
 
 model TransportProfile {
-  id             String      @id @default(uuid())
-  vehicleType    VehicleType
-  capacity       Float
-  latitude       Float?
-  longitude      Float?
-  currentAddress String?
-  available      Boolean     @default(true)
-  userId         String      @unique
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String       @id @default(uuid())
+  userId            String       @unique
 
-  @@index([available])
+  vehicleType       VehicleType
+  capacity          Float
+
+  isAvailable       Boolean      @default(true)
+
+  currentAddress    String?
+  currentRegion     String?
+
+  currentLat        Float?
+  currentLng        Float?
+
+  /// Unsupported("geometry")
+  location          Unsupported("geometry")?
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([isAvailable])
+  @@index([currentLat, currentLng])
+  @@index([location], type: Gist)
 }
 
 model Product {
-  id          String    @id @default(uuid())
-  name        String
-  quantity    Decimal
-  price       Decimal
-  unit        String
-  imageUrl    String?
-  available   Boolean   @default(true)
-  harvestDate DateTime?
-  description String?
-  farmerId    String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  category    Commodity
-  orders      Order[]
-  farmer      User      @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  id            String      @id @default(uuid())
+
+  farmerId      String
+
+  name          String
+  category      Commodity
+
+  quantity      Decimal
+  price         Decimal
+  unit          String
+
+  description   String?
+  imageUrl      String?
+  harvestDate   DateTime?
+
+  available     Boolean     @default(true)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  farmer        User        @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  orders        Order[]
 
   @@index([category])
   @@index([available])
+  @@index([farmerId])
 }
 
 model Order {
-  id              String      @id @default(uuid())
-  orderNumber     String      @unique // A short, readable ID like "ORD-8F2A"
-  
-  // Relationships
-  buyerId         String
-  buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id])
-  
-  farmerId        String
-  farmer          User        @relation("FarmerOrders", fields: [farmerId], references: [id])
-  
-  productId       String
-  product         Product     @relation(fields: [productId], references: [id])
-  
-  // Transport Relationship (Optional initially, populated in Phase 4)
-  transporterId   String?
-  transporter     User?       @relation("TransporterOrders", fields: [transporterId], references: [id])
+  id                  String        @id @default(uuid())
 
-  // Transaction Details
-  quantity        Int
-  totalPrice      Float       // quantity * product.price at the time of order
-  status          OrderStatus @default(PENDING)
-  
-  // Location Snapshots (in case profiles change later, the order keeps the historical addresses)
-  pickupAddress   String
-  deliveryAddress String
+  orderNumber         String        @unique
 
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  buyerId             String
+  farmerId            String
+  transporterId       String?
+  productId           String
+
+  quantity            Int
+  totalPrice          Float
+
+  pickupAddress       String
+  deliveryAddress     String
+
+  status              OrderStatus   @default(PENDING)
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  buyer               User          @relation("BuyerOrders", fields: [buyerId], references: [id])
+  farmer              User          @relation("FarmerOrders", fields: [farmerId], references: [id])
+  transporter         User?         @relation("TransporterOrders", fields: [transporterId], references: [id])
+  product             Product       @relation(fields: [productId], references: [id])
+
+  @@index([buyerId])
+  @@index([farmerId])
+  @@index([transporterId])
+  @@index([productId])
+  @@index([status])
 }
 
-model VerificationToken {
-  id        String   @id @default(uuid())
-  email     String
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+model AuthToken {
+  id          String      @id @default(uuid())
+
+  userId      String
+  type        TokenType
+
+  token       String      @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+
+  createdAt   DateTime    @default(now())
+
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([expiresAt])
+  @@index([userId, type])
 }
 
-model PasswordResetToken {
-  id        String   @id @default(uuid())
-  email     String
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+model spatial_ref_sys {
+  srid      Int      @id
+  auth_name String?  @db.VarChar(256)
+  auth_srid Int?
+  srtext    String?  @db.VarChar(2048)
+  proj4text String?  @db.VarChar(2048)
 }
 
 enum Role {
   FARMER
   BUYER
   TRANSPORT
+  ADMIN
 }
 
 enum VehicleType {
@@ -155,13 +209,14 @@ enum VehicleType {
 }
 
 enum OrderStatus {
-  PENDING              // Buyer placed order, waiting for Farmer
-  ACCEPTED             // Farmer confirmed they have the stock
-  REJECTED             // Farmer declined (e.g., stock ruined)
-  READY_FOR_TRANSPORT  // Farmer packed it, waiting for driver assignment (Phase 4 trigger)
-  IN_TRANSIT           // Driver picked it up
-  DELIVERED            // Buyer received it
-  CANCELLED            // Cancelled before processing
+  PENDING
+  ACCEPTED
+  READY_FOR_TRANSPORT
+  PENDING_DISPATCH
+  IN_TRANSIT
+  DELIVERED
+  REJECTED
+  CANCELLED
 }
 
 enum Commodity {
@@ -176,3 +231,7 @@ enum Commodity {
   ONION
 }
 
+enum TokenType {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}

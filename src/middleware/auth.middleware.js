@@ -14,20 +14,17 @@ module.exports = async (req, res, next) => {
 
   try {
     const decoded = verifyToken(token);
-    
-    // I am verifying the account is still alive after token verification
+
+    // Verify the account is still active after token verification
     const currentUser = await prisma.user.findUnique({
-      where: { id: decoded.id }
+      where: { id: decoded.id },
     });
 
-    // I am adding a strict check here. If the token is mathematically valid but the user soft-deleted their account 5 minutes ago, I reject the request immediately.
-    if (!currentUser || !currentUser.isActive) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "This account has been deactivated." 
-      });
+    // If the token is valid but the user has been deactivated, reject the request
+    if (!currentUser || currentUser.isActive === false) {
+      return next(new AppError(MESSAGES.ACCOUNT_DEACTIVATED, 401));
     }
-    
+
     req.user = decoded;
     next();
   } catch (err) {

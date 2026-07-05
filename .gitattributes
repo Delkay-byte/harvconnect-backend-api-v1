@@ -1,0 +1,36 @@
+###############################################################################
+# HarvConnect Git Attributes
+###############################################################################
+
+# Normalize text files
+* text=auto eol=lf
+
+# Source Code
+*.js          text
+*.cjs         text
+*.mjs         text
+*.ts          text
+*.json        text
+*.prisma      text
+*.sql         text
+*.md          text
+*.yml         text
+*.yaml        text
+*.env.example text
+
+# Shell Scripts
+*.sh          text eol=lf
+*.bat         text eol=crlf
+*.cmd         text eol=crlf
+
+# Binary Files
+*.png         binary
+*.jpg         binary
+*.jpeg        binary
+*.gif         binary
+*.ico         binary
+*.pdf         binary
+*.zip         binary
+
+# Prevent merge conflicts in package lock file where possible
+package-lock.json merge=union

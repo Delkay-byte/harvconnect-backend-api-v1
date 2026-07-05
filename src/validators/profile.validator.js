@@ -1,77 +1,23 @@
-const { body, validationResult } = require("express-validator");
+const { z } = require("zod");
+const validate = require("../middleware/validate");
 
-const handleValidationErrors = (req, res, next) => {
-  const errors = validationResult(req);
+const farmerProfileSchema = z.object({
+  farmName: z.string().trim().min(2, { message: "Farm name must be at least 2 characters." }).max(100, { message: "Farm name cannot exceed 100 characters." }).optional(),
+  bio: z.string().trim().max(500, { message: "Bio cannot exceed 500 characters." }).optional(),
+  address: z.string().trim().max(200, { message: "Address cannot exceed 200 characters." }).optional(),
+  latitude: z.number().min(-90).max(90, { message: "Latitude must be a valid coordinate between -90 and 90." }).optional(),
+  longitude: z.number().min(-180).max(180, { message: "Longitude must be a valid coordinate between -180 and 180." }).optional(),
+});
 
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      errors: errors.array(),
-    });
-  }
+const validateFarmerProfile = validate(farmerProfileSchema);
 
-  next();
-};
+const buyerProfileSchema = z.object({
+  deliveryAddress: z.string().trim().max(200, { message: "Delivery address cannot exceed 200 characters." }).optional(),
+  latitude: z.number().min(-90).max(90, { message: "Latitude must be a valid coordinate between -90 and 90." }).optional(),
+  longitude: z.number().min(-180).max(180, { message: "Longitude must be a valid coordinate between -180 and 180." }).optional(),
+});
 
-const validateFarmerProfile = [
-  body("farmName")
-    .optional()
-    .trim()
-    .isString()
-    .isLength({ min: 2, max: 100 })
-    .withMessage("Farm name must be between 2 and 100 characters."),
-
-  body("bio")
-    .optional()
-    .trim()
-    .isString()
-    .isLength({ max: 500 })
-    .withMessage("Bio cannot exceed 500 characters."),
-
-  body("address")
-    .optional()
-    .trim()
-    .isString()
-    .isLength({ max: 200 })
-    .withMessage("Address cannot exceed 200 characters."),
-
-  body("latitude")
-    .optional({ nullable: true })
-    .isFloat({ min: -90, max: 90 })
-    .withMessage("Latitude must be a valid coordinate between -90 and 90.")
-    .toFloat(),
-
-  body("longitude")
-    .optional({ nullable: true })
-    .isFloat({ min: -180, max: 180 })
-    .withMessage("Longitude must be a valid coordinate between -180 and 180.")
-    .toFloat(),
-
-  handleValidationErrors,
-];
-
-const validateBuyerProfile = [
-  body("deliveryAddress")
-    .optional()
-    .trim()
-    .isString()
-    .isLength({ max: 200 })
-    .withMessage("Delivery address cannot exceed 200 characters."),
-
-  body("latitude")
-    .optional({ nullable: true })
-    .isFloat({ min: -90, max: 90 })
-    .withMessage("Latitude must be a valid coordinate between -90 and 90.")
-    .toFloat(),
-
-  body("longitude")
-    .optional({ nullable: true })
-    .isFloat({ min: -180, max: 180 })
-    .withMessage("Longitude must be a valid coordinate between -180 and 180.")
-    .toFloat(),
-
-  handleValidationErrors,
-];
+const validateBuyerProfile = validate(buyerProfileSchema);
 
 module.exports = {
   validateFarmerProfile,

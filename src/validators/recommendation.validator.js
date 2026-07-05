@@ -1,28 +1,11 @@
-// src/validators/recommendation.validator.js
-const { query, validationResult } = require("express-validator");
+const { z } = require("zod");
 const commodities = require("../constants/commodities");
+const validate = require("../middleware/validate");
 
-const validateCommodity = [
-  // I am checking the query params here, not the body, since it's a GET request
-  query("commodity")
-    .notEmpty()
-    .withMessage("Commodity is required.")
-    .isIn(commodities)
-    .withMessage("Invalid commodity selected."),
+const commoditySchema = z.object({
+  commodity: z.enum(commodities, { message: "Invalid commodity selected." }),
+});
 
-  (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Validation failed",
-          errors: errors.array(),
-        });
-    }
-    next();
-  },
-];
+const validateCommodity = validate(commoditySchema);
 
 module.exports = { validateCommodity };

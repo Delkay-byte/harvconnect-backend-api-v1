@@ -37,6 +37,14 @@ const options = {
         name: "Products",
         description: "Marketplace product management",
       },
+      {
+        name: "Transport",
+        description: "Transport and logistics management",
+      },
+      {
+        name: "Recommendations",
+        description: "ML-powered product recommendations",
+      },
     ],
 
     components: {
@@ -73,6 +81,62 @@ const options = {
             message: {
               type: "string",
               example: "Request completed successfully.",
+            },
+          },
+        },
+
+        AuthenticatedUser: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              format: "uuid",
+              example: "123e4567-e89b-12d3-a456-426614174000",
+            },
+            fullName: {
+              type: "string",
+              example: "Saviour Amegayie",
+            },
+            email: {
+              type: "string",
+              format: "email",
+              example: "amegayiesaviour@gmail.com",
+            },
+            phone: {
+              type: "string",
+              example: "+233241234567",
+            },
+            role: {
+              type: "string",
+              enum: ["FARMER", "BUYER", "TRANSPORT", "ADMIN"],
+              example: "FARMER",
+            },
+            isVerified: {
+              type: "boolean",
+              example: true,
+            },
+            emailVerifiedAt: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              example: "2026-07-04T10:00:00.000Z",
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              example: "2026-07-01T08:00:00.000Z",
+            },
+            buyerProfile: {
+              type: "object",
+              nullable: true,
+            },
+            farmerProfile: {
+              type: "object",
+              nullable: true,
+            },
+            transportProfile: {
+              type: "object",
+              nullable: true,
             },
           },
         },
@@ -215,6 +279,208 @@ const options = {
         },
       },
 
+      "/api/v1/auth/verify-email": {
+        post: {
+          tags: ["Auth"],
+          summary: "Verify a new user's email address",
+          security: [],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["token"],
+                  properties: {
+                    token: {
+                      type: "string",
+                      example: "paste-the-token-from-your-database-here",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: "Email successfully verified." },
+            400: { description: "Invalid or expired token." },
+          },
+        },
+      },
+      "/api/v1/auth/forgot-password": {
+        post: {
+          tags: ["Auth"],
+          summary: "Request a password reset email",
+          security: [],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["email"],
+                  properties: {
+                    email: {
+                      type: "string",
+                      example: "farmer@test.com",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: "Reset email sent." },
+          },
+        },
+      },
+      "/api/v1/auth/reset-password": {
+        post: {
+          tags: ["Auth"],
+          summary: "Reset password using a token",
+          security: [],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["token", "password"],
+                  properties: {
+                    token: { type: "string" },
+                    password: {
+                      type: "string",
+                      example: "NewSecurePassword123!",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: "Password successfully reset.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      message: {
+                        type: "string",
+                        example: "Password has been successfully reset. You can now log in.",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            400: {
+              description: "Invalid or expired token.",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/Error",
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/v1/auth/resend-verification": {
+        post: {
+          tags: ["Auth"],
+          summary: "Resend email verification link",
+          security: [],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["email"],
+                  properties: {
+                    email: {
+                      type: "string",
+                      example: "farmer@test.com",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: "Verification email sent if account exists and is unverified.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      message: {
+                        type: "string",
+                        example: "If an account exists and is not yet verified, a verification email has been sent.",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            400: {
+              description: "Email is required.",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/Error",
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/v1/auth/me": {
+        get: {
+          tags: ["Auth"],
+          summary: "Get authenticated user profile",
+          security: [
+            {
+              bearerAuth: [],
+            },
+          ],
+          responses: {
+            200: {
+              description: "Profile retrieved successfully.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      success: { type: "boolean", example: true },
+                      message: {
+                        type: "string",
+                        example: "Profile fetched successfully",
+                      },
+                      data: {
+                        $ref: "#/components/schemas/AuthenticatedUser",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            401: {
+              description: "Unauthorized. Token missing or invalid.",
+            },
+            404: {
+              description: "User not found or inactive.",
+            },
+          },
+        },
+      },
+
       // ===================================================================
       // ORDERS
       // ===================================================================
@@ -223,7 +489,8 @@ const options = {
         get: {
           tags: ["Orders"],
           summary: "Get user's orders",
-          description: "Retrieves orders for the authenticated user (as buyer or farmer).",
+          description:
+            "Retrieves orders for the authenticated user (as buyer or farmer).",
           security: [
             {
               bearerAuth: [],
@@ -258,7 +525,8 @@ const options = {
         post: {
           tags: ["Orders"],
           summary: "Place a new order",
-          description: "Creates a new order for a product. Requires BUYER role.",
+          description:
+            "Creates a new order for a product. Requires BUYER role.",
           security: [
             {
               bearerAuth: [],
@@ -331,7 +599,8 @@ const options = {
         patch: {
           tags: ["Orders"],
           summary: "Update order status",
-          description: "Allows farmers to accept/reject orders or update status.",
+          description:
+            "Allows farmers to accept/reject orders or update status.",
           security: [
             {
               bearerAuth: [],
@@ -633,6 +902,123 @@ const options = {
             },
             403: {
               description: "Only farmers may create products.",
+            },
+          },
+        },
+      },
+
+      // ===================================================================
+      // TRANSPORT
+      // ===================================================================
+
+      "/api/v1/transport/status": {
+        put: {
+          tags: ["Transport"],
+          summary: "Update transport status and location",
+          description:
+            "Allows TRANSPORT role users to update their availability and location.",
+          security: [
+            {
+              bearerAuth: [],
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["available", "latitude", "longitude"],
+                  properties: {
+                    available: {
+                      type: "boolean",
+                      example: true,
+                    },
+                    latitude: {
+                      type: "number",
+                      format: "float",
+                      example: 6.0001,
+                    },
+                    longitude: {
+                      type: "number",
+                      format: "float",
+                      example: 0.5001,
+                    },
+                    currentAddress: {
+                      type: "string",
+                      example: "Greater Accra, Ghana",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: "Transport profile updated successfully.",
+            },
+            400: {
+              description: "Validation failed.",
+            },
+            403: {
+              description: "Only transport users may access this endpoint.",
+            },
+            404: {
+              description: "Transport profile not found.",
+            },
+          },
+        },
+      },
+
+      // ===================================================================
+      // RECOMMENDATIONS
+      // ===================================================================
+
+      "/api/v1/recommendations": {
+        get: {
+          tags: ["Recommendations"],
+          summary: "Get personalized product recommendations",
+          description:
+            "Returns ML-powered product recommendations based on buyer location and commodity preference.",
+          security: [
+            {
+              bearerAuth: [],
+            },
+          ],
+          parameters: [
+            {
+              name: "commodity",
+              in: "query",
+              required: true,
+              description: "Commodity type for recommendations",
+              schema: {
+                type: "string",
+                enum: [
+                  "TOMATO_LOCAL",
+                  "TOMATO_HYBRID",
+                  "PEPPER",
+                  "OKRA",
+                  "GARDEN_EGGS",
+                  "CABBAGE",
+                  "LETTUCE",
+                  "CUCUMBER",
+                  "ONION",
+                ],
+              },
+            },
+          ],
+          responses: {
+            200: {
+              description: "Recommendations retrieved successfully.",
+            },
+            400: {
+              description: "Validation failed or buyer profile incomplete.",
+            },
+            403: {
+              description: "Only buyers may access this endpoint.",
+            },
+            502: {
+              description: "Failed to fetch recommendations from ML engine.",
             },
           },
         },

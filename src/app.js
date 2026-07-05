@@ -7,8 +7,6 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerSpecs = require("./config/swagger");
 
 const rootRouter = require("./routes");
-const profileRoutes = require("./routes/profile.routes");
-const orderRoutes = require("./routes/order.routes");
 
 const errorHandler = require("./middleware/errorMiddleware");
 const notFound = require("./middleware/notFound");
@@ -24,6 +22,26 @@ app.disable("x-powered-by");
 app.use(helmet());
 app.use(cors());
 app.use(morgan("dev"));
+
+// Rate limiting to prevent brute force and DDoS attacks
+// Disabled during testing to avoid blocking test requests
+if (process.env.NODE_ENV !== "test") {
+  const rateLimit = require("express-rate-limit");
+
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: {
+      success: false,
+      message: "Too many requests from this IP, please try again later.",
+    },
+    standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  });
+
+  // Apply rate limiting to all API routes
+  app.use("/api/", limiter);
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -63,8 +81,6 @@ app.get("/", (req, res) => {
 /* -------------------------------------------------------------------------- */
 
 app.use("/api/v1", rootRouter);
-app.use("/api/v1/profile", profileRoutes);
-app.use("/api/v1/orders", orderRoutes);
 
 /* -------------------------------------------------------------------------- */
 /*                              Error Middleware                              */
