@@ -1,7 +1,7 @@
 const request = require("supertest");
 const app = require("../app");
 const prisma = require("../config/prisma");
-const resetDatabase = require("../test/helpers/resetDatabase");
+const resetDatabase = require("../test/helpers/resetDatabase.js");
 
 // Helper function to verify user email
 const verifyUserEmail = async (email) => {

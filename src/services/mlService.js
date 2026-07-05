@@ -1,16 +1,43 @@
 // src/services/mlService.js
+
 const axios = require("axios");
 const AppError = require("../utils/AppError");
 
+const mlClient = axios.create({
+  baseURL: process.env.ML_API_URL,
+  timeout: 10000,
+});
+
 const getRecommendations = async (commodity, lat, lon) => {
   try {
-    const response = await axios.get(`${process.env.ML_API_URL}/match`, {
-      params: { commodity, lat, lon },
+    const { data } = await mlClient.get("/match", {
+      params: {
+        commodity,
+        lat,
+        lon,
+      },
     });
-    return response.data;
+
+    return data;
   } catch (error) {
-    throw new AppError("Failed to fetch recommendations from ML engine", 502);
+    if (error.response) {
+      throw new AppError(
+        `ML service responded with status ${error.response.status}.`,
+        502,
+      );
+    }
+
+    if (error.request) {
+      throw new AppError(
+        "ML recommendation service is currently unavailable.",
+        503,
+      );
+    }
+
+    throw new AppError("Failed to retrieve recommendations.", 500);
   }
 };
 
-module.exports = { getRecommendations };
+module.exports = {
+  getRecommendations,
+};

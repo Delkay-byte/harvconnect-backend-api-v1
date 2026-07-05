@@ -1,11 +1,12 @@
 const swaggerJsdoc = require("swagger-jsdoc");
+const { APP_VERSION } = require("./app");
 
 const options = {
   definition: {
     openapi: "3.0.3",
     info: {
       title: "HarvConnect API",
-      version: "1.0.0",
+      version: APP_VERSION,
       description:
         "Comprehensive REST API documentation for the HarvConnect agricultural marketplace platform.",
       contact: {
@@ -44,6 +45,10 @@ const options = {
       {
         name: "Recommendations",
         description: "ML-powered product recommendations",
+      },
+      {
+        name: "Health",
+        description: "API health and status monitoring",
       },
     ],
 
@@ -1019,6 +1024,69 @@ const options = {
             },
             502: {
               description: "Failed to fetch recommendations from ML engine.",
+            },
+          },
+        },
+      },
+
+      // ===================================================================
+      // HEALTH
+      // ===================================================================
+
+      "/api/v1/health": {
+        get: {
+          tags: ["Health"],
+          summary: "API health check",
+          description:
+            "Returns the current health status and metadata of the API. Does not require authentication.",
+          security: [],
+          responses: {
+            200: {
+              description: "API is healthy.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      success: {
+                        type: "boolean",
+                        example: true,
+                      },
+                      message: {
+                        type: "string",
+                        example: "HarvConnect API is healthy.",
+                      },
+                      data: {
+                        type: "object",
+                        properties: {
+                          status: {
+                            type: "string",
+                            example: "ok",
+                          },
+                          uptime: {
+                            type: "integer",
+                            example: 1234,
+                            description: "Server uptime in seconds",
+                          },
+                          timestamp: {
+                            type: "string",
+                            format: "date-time",
+                            example: "2026-07-05T06:00:00.000Z",
+                          },
+                          version: {
+                            type: "string",
+                            example: "1.0.0",
+                          },
+                          environment: {
+                            type: "string",
+                            example: "production",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },

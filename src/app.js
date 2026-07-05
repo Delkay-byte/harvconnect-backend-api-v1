@@ -5,11 +5,13 @@ const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 
 const swaggerSpecs = require("./config/swagger");
+const { APP_VERSION } = require("./config/app");
 
 const rootRouter = require("./routes");
 
 const errorHandler = require("./middleware/errorMiddleware");
 const notFound = require("./middleware/notFound");
+const requestId = require("./middleware/requestId.middleware");
 
 const app = express();
 
@@ -21,7 +23,12 @@ app.disable("x-powered-by");
 
 app.use(helmet());
 app.use(cors());
-app.use(morgan("dev"));
+app.use(requestId);
+app.use(
+  morgan("[:req[id]] :method :url :status - :response-time ms", {
+    skip: (req, res) => process.env.NODE_ENV === "test",
+  })
+);
 
 // Rate limiting to prevent brute force and DDoS attacks
 // Disabled during testing to avoid blocking test requests
@@ -73,6 +80,20 @@ app.get("/", (req, res) => {
     success: true,
     message: "Welcome to the HarvConnect API 🚜",
     documentation: "/api-docs",
+  });
+});
+
+app.get("/api/v1/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "HarvConnect API is healthy.",
+    data: {
+      status: "ok",
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+      version: APP_VERSION,
+      environment: process.env.NODE_ENV || "development",
+    },
   });
 });
 
