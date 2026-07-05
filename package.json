@@ -1,6 +1,9 @@
 {
   "name": "harvconnect-backend",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "Backend engine for the GDSS-PSInno AgriTech Challenge",
   "main": "src/server.js",
   "scripts": {
