@@ -196,11 +196,11 @@ async function main() {
           fullName: "Legacy Test Farmer",
           email: "farmer@test.com",
           password:
-            "$2a$12$7MD02fSNbkZeDXyJmgGRGeBWQFpm4SB853KfwBXEQdOp3CMopWvZi",
+            "$2a$12$urfX1bggn6VAO8NHlVagNewMR4frc7YIfS0W.TKoppZ6PQ/bHhbQi",
           role: "FARMER",
           isVerified: true,
-          emailVerifiedAt: new Date("2026-07-05T21:51:11.976Z"),
-          phone: "0240000000",
+          emailVerifiedAt: new Date("2026-07-06T02:15:53.565Z"),
+          phone: "+233200000000", // Add this line!
         },
       });
       console.log(`  ✓ Created legacy test farmer: farmer@test.com`);
@@ -401,27 +401,27 @@ async function main() {
         },
       ];
 
-      for (const prod of productData) {
+      // Use createMany for better performance
+      const productsToCreate = productData.map((prod) => {
         const farmer = farmers[prod.farmerIdx];
-        await tx.product.create({
-          data: {
-            farmerId: farmer.id,
-            name: prod.name,
-            category: prod.category,
-            quantity: prod.quantity,
-            price: prod.price,
-            unit: prod.unit,
-            description: `Fresh ${prod.name} from ${farmer.fullName}'s farm in ${
-              LOCATIONS.greaterAccra[prod.farmerIdx]?.address ||
-              LOCATIONS.ashanti[prod.farmerIdx - 3]?.address
-            }. Harvested recently and ready for delivery.`,
-            available: true,
-            harvestDate: new Date(
-              Date.now() - Math.random() * 3 * 24 * 60 * 60 * 1000,
-            ), // Harvested within last 3 days
-          },
-        });
-      }
+        return {
+          farmerId: farmer.id,
+          name: prod.name,
+          category: prod.category,
+          quantity: prod.quantity,
+          price: prod.price,
+          unit: prod.unit,
+          description: `Fresh ${prod.name} from ${farmer.fullName}'s farm in ${
+            LOCATIONS.greaterAccra[prod.farmerIdx]?.address ||
+            LOCATIONS.ashanti[prod.farmerIdx - 3]?.address
+          }. Harvested recently and ready for delivery.`,
+          available: true,
+          harvestDate: new Date(
+            Date.now() - Math.random() * 3 * 24 * 60 * 60 * 1000,
+          ), // Harvested within last 3 days
+        };
+      });
+      await tx.product.createMany({ data: productsToCreate });
       console.log(`  ✓ Created ${productData.length} products`);
 
       console.log("⭐ Creating sample reviews...");
@@ -434,55 +434,50 @@ async function main() {
         "Best tomatoes in the market!",
       ];
 
-      let reviewCount = 0;
+      // Use createMany for better performance
+      const reviewsToCreate = [];
       for (let i = 0; i < buyers.length; i++) {
         // Each buyer reviews 2-3 farmers
         const numReviews = 2 + Math.floor(Math.random() * 2);
         for (let j = 0; j < numReviews && j < farmers.length; j++) {
           const rating = 4 + Math.floor(Math.random() * 2); // 4 or 5 stars
-          await tx.review.create({
-            data: {
-              buyerId: buyers[i].id,
-              farmerId: farmers[j].id,
-              rating: rating,
-              comment:
-                reviewComments[
-                  Math.floor(Math.random() * reviewComments.length)
-                ],
-            },
+          reviewsToCreate.push({
+            buyerId: buyers[i].id,
+            farmerId: farmers[j].id,
+            rating: rating,
+            comment:
+              reviewComments[Math.floor(Math.random() * reviewComments.length)],
           });
-          reviewCount++;
         }
       }
-      console.log(`  ✓ Created ${reviewCount} reviews`);
+      await tx.review.createMany({ data: reviewsToCreate });
+      console.log(`  ✓ Created ${reviewsToCreate.length} reviews`);
 
       console.log("📦 Creating sample orders...");
       const products = await tx.product.findMany({ take: 5 });
-      let orderCount = 0;
+      // Use createMany for better performance
+      const ordersToCreate = [];
       for (let i = 0; i < Math.min(3, products.length); i++) {
         const product = products[i];
         const buyer = buyers[i % buyers.length];
-
-        await tx.order.create({
-          data: {
-            orderNumber: `ORD-${Date.now()}-${i}`,
-            buyerId: buyer.id,
-            farmerId: product.farmerId,
-            productId: product.id,
-            quantity: 5,
-            totalPrice: Number(product.price) * 5,
-            pickupAddress: "Farm Location",
-            deliveryAddress: LOCATIONS.greaterAccra[0].address,
-            status: "DELIVERED",
-          },
+        ordersToCreate.push({
+          orderNumber: `ORD-${Date.now()}-${i}`,
+          buyerId: buyer.id,
+          farmerId: product.farmerId,
+          productId: product.id,
+          quantity: 5,
+          totalPrice: Number(product.price) * 5,
+          pickupAddress: "Farm Location",
+          deliveryAddress: LOCATIONS.greaterAccra[0].address,
+          status: "DELIVERED",
         });
-        orderCount++;
       }
-      console.log(`  ✓ Created ${orderCount} orders`);
+      await tx.order.createMany({ data: ordersToCreate });
+      console.log(`  ✓ Created ${ordersToCreate.length} orders`);
     },
     {
-      maxWait: 5000, // Give Prisma 5 seconds to connect to the database
-      timeout: 20000, // I am giving this transaction a full 20 seconds to complete instead of 5
+      maxWait: 10000, // Give Prisma 10 seconds to connect to the database
+      timeout: 60000, // I am giving this transaction a full 60 seconds to complete
     },
   );
 
