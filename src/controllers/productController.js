@@ -1,7 +1,32 @@
 const productService = require("../services/productService");
 const asyncHandler = require("../utils/asyncHandler");
+const cloudinary = require("../config/cloudinary");
 
 const createProduct = asyncHandler(async (req, res) => {
+  // If an image was uploaded, send it to Cloudinary
+  if (req.file) {
+    try {
+      const result = await new Promise((resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            { folder: "harvconnect/products" },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            },
+          )
+          .end(req.file.buffer);
+      });
+      req.body.imageUrl = result.secure_url;
+    } catch (error) {
+      console.error("Cloudinary upload error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to upload image. Please try again.",
+      });
+    }
+  }
+
   const product = await productService.createProduct(req.user.id, req.body);
 
   res.status(201).json({

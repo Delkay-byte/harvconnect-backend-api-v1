@@ -21,7 +21,10 @@ const registerSchema = z.object({
       message: "Invalid vehicle type.",
     })
     .optional(),
-  capacity: z.number().positive({ message: "Capacity must be a positive number." }).optional(),
+  capacity: z.coerce
+    .number()
+    .positive({ message: "Capacity must be a positive number." })
+    .optional(),
 });
 
 const validateRegister = validate(registerSchema);

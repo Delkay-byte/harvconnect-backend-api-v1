@@ -12,6 +12,7 @@ const {
   validateCreateProduct,
   validateUpdateProduct,
 } = require("../validators/product.validator");
+const upload = require("../middleware/upload.middleware");
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.get("/", getProducts);
 router.get("/:id", getProduct);
 
 // Farmer ownership protected entries
-router.post("/", authorize("FARMER"), validateCreateProduct, createProduct);
+router.post("/", authorize("FARMER"), upload.single("produceImage"), validateCreateProduct, createProduct);
 router.patch("/:id", authorize("FARMER"), validateUpdateProduct, updateProduct);
 router.delete("/:id", authorize("FARMER"), deleteProduct);
 

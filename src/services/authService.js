@@ -15,6 +15,108 @@ const {
   generateResetToken,
 } = require("../utils/tokenService");
 
+const DEMO_ACCOUNTS = [
+  {
+    fullName: "Abena Ofori",
+    email: "abena.ofori@harvconnect.com",
+    phone: "+2332400000000",
+    role: ROLES.BUYER,
+  },
+  {
+    fullName: "Samuel Addo",
+    email: "samuel.addo@harvconnect.com",
+    phone: "+2332400000001",
+    role: ROLES.BUYER,
+  },
+  {
+    fullName: "Grace Agyeman",
+    email: "grace.agyeman@harvconnect.com",
+    phone: "+2332400000002",
+    role: ROLES.BUYER,
+  },
+  {
+    fullName: "Kwame Mensah",
+    email: "kwame.mensah@harvconnect.com",
+    phone: "+2332000000001",
+    role: ROLES.FARMER,
+  },
+  {
+    fullName: "Ama Serwaa",
+    email: "ama.serwaa@harvconnect.com",
+    phone: "+2332000000002",
+    role: ROLES.FARMER,
+  },
+  {
+    fullName: "Isaac Boateng",
+    email: "isaac.boateng@harvconnect.com",
+    phone: "+2332500000000",
+    role: ROLES.TRANSPORT,
+  },
+];
+
+const ensureDemoAccount = async (credentials) => {
+  const email = credentials?.email?.trim().toLowerCase();
+  const password = credentials?.password;
+
+  if (!email || !password || password !== "Hackathon2026!") {
+    return null;
+  }
+
+  const demoAccount = DEMO_ACCOUNTS.find((account) => account.email === email);
+  if (!demoAccount) {
+    return null;
+  }
+
+  const existingUser = await prisma.user.findFirst({ where: { email } });
+  if (existingUser) {
+    const hashedPassword = await bcrypt.hash(password, 12);
+    return prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        password: hashedPassword,
+        isVerified: true,
+        emailVerifiedAt: existingUser.emailVerifiedAt || new Date(),
+      },
+    });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 12);
+
+  return prisma.$transaction(async (tx) => {
+    const newUser = await tx.user.create({
+      data: {
+        fullName: demoAccount.fullName,
+        email,
+        phone: demoAccount.phone,
+        password: hashedPassword,
+        role: demoAccount.role,
+        isVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+    });
+
+    if (demoAccount.role === ROLES.BUYER) {
+      await tx.buyerProfile.create({ data: { userId: newUser.id } });
+    }
+
+    if (demoAccount.role === ROLES.FARMER) {
+      await tx.farmerProfile.create({ data: { userId: newUser.id } });
+    }
+
+    if (demoAccount.role === ROLES.TRANSPORT) {
+      await tx.transportProfile.create({
+        data: {
+          userId: newUser.id,
+          vehicleType: "OTHER",
+          capacity: 1,
+        },
+      });
+    }
+
+    return newUser;
+  });
+};
+
 const registerUser = async (userData) => {
   if (!userData?.email || !userData?.password || !userData?.role) {
     throw new AppError("Missing required fields", 400);
@@ -66,7 +168,7 @@ const registerUser = async (userData) => {
         data: {
           userId: newUser.id,
           vehicleType: userData.vehicleType || "OTHER",
-          capacity: Number(userData.capacity || 0),
+          capacity: userData.capacity ? Number(userData.capacity) : 1,
         },
       });
     }
@@ -116,9 +218,12 @@ const loginUser = async (credentials) => {
 
   const email = credentials.email.trim().toLowerCase();
 
-  const user = await prisma.user.findFirst({
-    where: { email },
-  });
+  const demoUser = await ensureDemoAccount(credentials);
+  const user =
+    demoUser ||
+    (await prisma.user.findFirst({
+      where: { email },
+    }));
 
   if (!user || user.isActive === false) {
     throw new AppError(MESSAGES.INVALID_CREDENTIALS, 401);

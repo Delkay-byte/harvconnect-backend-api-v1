@@ -8,97 +8,75 @@ datasource db {
 }
 
 model User {
-  id                    String             @id @default(uuid())
-  fullName              String
-  email                 String             @unique
-  phone                 String             @unique
-  password              String
-  role                  Role
-
-  isActive              Boolean            @default(true)
-  isVerified            Boolean            @default(false)
-  emailVerifiedAt       DateTime?
-  lastLogin             DateTime?
-  lastPasswordResetAt   DateTime?
-  deletedAt             DateTime?
-
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
-
-  buyerProfile          BuyerProfile?
-  farmerProfile         FarmerProfile?
-  transportProfile      TransportProfile?
-
-  authTokens            AuthToken[]
-
-  products              Product[]
-
-  ordersAsBuyer         Order[]            @relation("BuyerOrders")
-  ordersAsFarmer        Order[]            @relation("FarmerOrders")
-  ordersAsTransporter   Order[]            @relation("TransporterOrders")
-
-  reviewsAsBuyer        Review[]           @relation("BuyerReviews")
-  reviewsAsFarmer       Review[]           @relation("FarmerReviews")
+  id                  String            @id @default(uuid())
+  fullName            String
+  email               String            @unique
+  phone               String            @unique
+  password            String
+  role                Role
+  isActive            Boolean           @default(true)
+  isVerified          Boolean           @default(false)
+  emailVerifiedAt     DateTime?
+  lastLogin           DateTime?
+  lastPasswordResetAt DateTime?
+  deletedAt           DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  authTokens          AuthToken[]
+  buyerProfile        BuyerProfile?
+  farmerProfile       FarmerProfile?
+  ordersAsBuyer       Order[]           @relation("BuyerOrders")
+  ordersAsFarmer      Order[]           @relation("FarmerOrders")
+  ordersAsTransporter Order[]           @relation("TransporterOrders")
+  products            Product[]
+  reviewsAsBuyer      Review[]          @relation("BuyerReviews")
+  reviewsAsFarmer     Review[]          @relation("FarmerReviews")
+  transportProfile    TransportProfile?
 }
 
 model FarmerProfile {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-
-  farmName    String?
-  bio         String?
-  address     String?
-
-  latitude    Float?
-  longitude   Float?
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  farmName  String?
+  bio       String?
+  address   String?
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([latitude, longitude])
 }
 
 model BuyerProfile {
-  id                String    @id @default(uuid())
-  userId            String    @unique
-
-  deliveryAddress   String?
-
-  latitude          Float?
-  longitude         Float?
-
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  deliveryAddress String?
+  latitude        Float?
+  longitude       Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([latitude, longitude])
 }
 
 model TransportProfile {
-  id                String       @id @default(uuid())
-  userId            String       @unique
-
-  vehicleType       VehicleType
-  capacity          Float
-
-  isAvailable       Boolean      @default(true)
-
-  currentAddress    String?
-  currentRegion     String?
-
-  currentLat        Float?
-  currentLng        Float?
-
+  id             String                   @id @default(uuid())
+  userId         String                   @unique
+  vehicleType    VehicleType
+  capacity       Float
+  isAvailable    Boolean                  @default(true)
+  currentAddress String?
+  currentRegion  String?
+  currentLat     Float?
+  currentLng     Float?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
   /// Unsupported("geometry")
-  location          Unsupported("geometry")?
-
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-
-  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location       Unsupported("geometry")?
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([isAvailable])
   @@index([currentLat, currentLng])
@@ -106,28 +84,21 @@ model TransportProfile {
 }
 
 model Product {
-  id            String      @id @default(uuid())
-
-  farmerId      String
-
-  name          String
-  category      Commodity
-
-  quantity      Decimal
-  price         Decimal
-  unit          String
-
-  description   String?
-  imageUrl      String?
-  harvestDate   DateTime?
-
-  available     Boolean     @default(true)
-
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  farmer        User        @relation(fields: [farmerId], references: [id], onDelete: Cascade)
-  orders        Order[]
+  id          String    @id @default(uuid())
+  farmerId    String
+  name        String
+  category    Commodity
+  quantity    Decimal
+  price       Decimal
+  unit        String
+  description String?
+  imageUrl    String?
+  harvestDate DateTime?
+  available   Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  orders      Order[]
+  farmer      User      @relation(fields: [farmerId], references: [id], onDelete: Cascade)
 
   @@index([category])
   @@index([available])
@@ -135,30 +106,23 @@ model Product {
 }
 
 model Order {
-  id                  String        @id @default(uuid())
-
-  orderNumber         String        @unique
-
-  buyerId             String
-  farmerId            String
-  transporterId       String?
-  productId           String
-
-  quantity            Int
-  totalPrice          Float
-
-  pickupAddress       String
-  deliveryAddress     String
-
-  status              OrderStatus   @default(PENDING)
-
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-
-  buyer               User          @relation("BuyerOrders", fields: [buyerId], references: [id])
-  farmer              User          @relation("FarmerOrders", fields: [farmerId], references: [id])
-  transporter         User?         @relation("TransporterOrders", fields: [transporterId], references: [id])
-  product             Product       @relation(fields: [productId], references: [id])
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique
+  buyerId         String
+  farmerId        String
+  transporterId   String?
+  productId       String
+  quantity        Int
+  totalPrice      Float
+  pickupAddress   String
+  deliveryAddress String
+  status          OrderStatus @default(PENDING)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  farmer          User        @relation("FarmerOrders", fields: [farmerId], references: [id])
+  product         Product     @relation(fields: [productId], references: [id])
+  transporter     User?       @relation("TransporterOrders", fields: [transporterId], references: [id])
 
   @@index([buyerId])
   @@index([farmerId])
@@ -168,18 +132,14 @@ model Order {
 }
 
 model AuthToken {
-  id          String      @id @default(uuid())
-
-  userId      String
-  type        TokenType
-
-  token       String      @unique
-  expiresAt   DateTime
-  usedAt      DateTime?
-
-  createdAt   DateTime    @default(now())
-
-  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  userId    String
+  type      TokenType
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
@@ -195,7 +155,6 @@ model Review {
   farmerId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   buyer     User     @relation("BuyerReviews", fields: [buyerId], references: [id], onDelete: Cascade)
   farmer    User     @relation("FarmerReviews", fields: [farmerId], references: [id], onDelete: Cascade)
 
@@ -205,11 +164,11 @@ model Review {
 }
 
 model spatial_ref_sys {
-  srid      Int      @id
-  auth_name String?  @db.VarChar(256)
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
   auth_srid Int?
-  srtext    String?  @db.VarChar(2048)
-  proj4text String?  @db.VarChar(2048)
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
 }
 
 enum Role {
