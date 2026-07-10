@@ -296,7 +296,7 @@ const forgotPassword = async (email) => {
     },
   });
 
-  sendPasswordResetEmail(email, token);
+  await sendPasswordResetEmail(email, token);
 };
 
 const resetPassword = async (token, newPassword) => {
@@ -316,7 +316,7 @@ const resetPassword = async (token, newPassword) => {
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: record.userId },
-      data: { password: hashed },
+      data: { password: hashed, lastPasswordResetAt: new Date() },
     });
 
     await tx.authToken.update({

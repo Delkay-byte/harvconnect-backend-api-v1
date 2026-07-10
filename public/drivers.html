@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Available Drivers - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <style>
+    .driver-card { background:#fff; border:1px solid var(--hc-border); border-radius:var(--hc-radius-lg); padding:20px; display:flex; align-items:center; gap:16px; margin-bottom:12px; transition:box-shadow 0.2s; }
+    .driver-card:hover { box-shadow:var(--hc-shadow-lg); }
+    .driver-card.recommended { border-color:var(--hc-green); border-width:2px; }
+    .driver-avatar { width:52px; height:52px; border-radius:50%; background:var(--hc-green-light); color:var(--hc-green); font-size:18px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .driver-info { flex:1; min-width:0; }
+    .driver-name { font-size:16px; font-weight:700; margin-bottom:2px; }
+    .driver-meta { font-size:13px; color:var(--hc-text-gray); }
+    .driver-meta span { margin-right:12px; }
+    .driver-distance { font-size:13px; color:var(--hc-green); font-weight:600; white-space:nowrap; }
+    .recommended-badge { display:inline-block; background:var(--hc-green); color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; margin-left:8px; }
+    .drivers-back-link { color:var(--hc-green); text-decoration:none; font-size:14px; font-weight:600; display:inline-block; margin-bottom:16px; }
+  </style>
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container">
+        <a href="farmer-orders.html" class="drivers-back-link">&larr; Back to Orders</a>
+        <div class="page-header">
+          <h1>Available Drivers</h1>
+          <p>Select a driver for your order delivery</p>
+        </div>
+        <div id="driversContent"></div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+
+      if (!HarvConnectAuth.requireAuth() || !HarvConnectAuth.requireRole("FARMER")) return;
+
+      var content = document.getElementById("driversContent");
+      var params = HarvConnectUtils.getParams();
+      var orderId = params.orderId || sessionStorage.getItem("hc_last_order_for_transport") || "";
+
+      function haversineDistance(lat1, lon1, lat2, lon2) {
+        var R = 6371;
+        var dLat = (lat2 - lat1) * Math.PI / 180;
+        var dLon = (lon2 - lon1) * Math.PI / 180;
+        var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+      }
+
+      async function loadDrivers() {
+        content.innerHTML = HarvConnectComponents.renderSkeletonCards(3);
+        try {
+          var res = await HarvConnectAPI.transport.listDrivers();
+          var drivers = res.data || res.data.drivers || [];
+          renderDrivers(drivers);
+        } catch (err) {
+          if (err.status === 404) {
+            content.innerHTML =
+              '<div class="hc-card" style="text-align:center;padding:48px 24px;">' +
+                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" style="margin-bottom:16px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+                '<h3 style="margin-bottom:8px;">Driver listing is not yet available</h3>' +
+                '<p style="color:var(--hc-text-gray);font-size:14px;max-width:400px;margin:0 auto 20px;">The system will automatically match the nearest available driver for your order. Your order is now marked as <strong>Ready for Transport</strong>.</p>' +
+                (orderId ? '<a href="farmer-orders.html" class="hc-btn hc-btn-primary">Back to Orders</a>' : '<a href="farmer-orders.html" class="hc-btn hc-btn-primary">Back to Orders</a>') +
+              '</div>';
+          } else {
+            content.innerHTML = HarvConnectComponents.renderErrorState("Failed to load drivers.", "loadDrivers");
+          }
+        }
+      }
+
+      function renderDrivers(drivers) {
+        if (!drivers.length) {
+          content.innerHTML = HarvConnectComponents.renderEmptyState("No drivers are currently available in your area.");
+          return;
+        }
+
+        var user = HarvConnectAuth.getUser();
+        var farmerLat = null;
+        var farmerLng = null;
+        var fp = user && user.farmerProfile;
+        if (fp && fp.latitude && fp.longitude) {
+          farmerLat = parseFloat(fp.latitude);
+          farmerLng = parseFloat(fp.longitude);
+        }
+
+        var driversWithDist = drivers.map(function (d) {
+          var dLat = d.transportProfile ? parseFloat(d.transportProfile.currentLat || 0) : 0;
+          var dLng = d.transportProfile ? parseFloat(d.transportProfile.currentLng || 0) : 0;
+          var dist = null;
+          if (farmerLat && farmerLng && dLat && dLng) {
+            dist = haversineDistance(farmerLat, farmerLng, dLat, dLng);
+          }
+          return { driver: d, distance: dist };
+        });
+
+        driversWithDist.sort(function (a, b) {
+          if (a.distance === null) return 1;
+          if (b.distance === null) return -1;
+          return a.distance - b.distance;
+        });
+
+        var recommendedIdx = -1;
+        for (var i = 0; i < driversWithDist.length; i++) {
+          if (driversWithDist[i].distance !== null) {
+            recommendedIdx = i;
+            break;
+          }
+        }
+
+        content.innerHTML = driversWithDist.map(function (item, idx) {
+          var d = item.driver;
+          var tp = d.transportProfile || {};
+          var initials = HarvConnectUtils.getInitials(d.fullName);
+          var isRecommended = idx === recommendedIdx;
+          var distText = item.distance !== null ? item.distance.toFixed(1) + " km away" : "Distance unknown";
+          var recBadge = isRecommended ? '<span class="recommended-badge">Recommended</span>' : "";
+
+          return (
+            '<div class="driver-card' + (isRecommended ? " recommended" : "") + '">' +
+              '<div class="driver-avatar">' + initials + "</div>" +
+              '<div class="driver-info">' +
+                '<div class="driver-name">' + (d.fullName || "Driver") + recBadge + "</div>" +
+                '<div class="driver-meta">' +
+                  '<span>' + HarvConnectUtils.getVehicleLabel(tp.vehicleType || "N/A") + "</span>" +
+                  '<span>' + (tp.capacity || 0) + " kg capacity</span>" +
+                  '<span>' + (tp.currentRegion || "N/A") + "</span>" +
+                "</div>" +
+                '<div class="driver-meta" style="margin-top:4px;">' +
+                  '<span>' + (tp.currentAddress || "Location not set") + "</span>" +
+                "</div>" +
+              "</div>" +
+              '<div class="driver-distance">' + distText + "</div>" +
+            "</div>"
+          );
+        }).join("");
+
+        if (orderId) {
+          content.innerHTML += '<div style="text-align:center;margin-top:24px;"><p style="font-size:14px;color:var(--hc-text-gray);">The nearest driver will be automatically assigned to order #' + orderId.slice(0, 8) + "</p></div>";
+        }
+      }
+
+      loadDrivers();
+    })();
+  </script>
+</body>
+</html>

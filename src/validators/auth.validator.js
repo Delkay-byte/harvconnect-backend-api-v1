@@ -36,4 +36,23 @@ const loginSchema = z.object({
 
 const validateLogin = validate(loginSchema);
 
-module.exports = { validateRegister, validateLogin };
+const forgotPasswordSchema = z.object({
+  email: z.string().email({ message: "Valid email is required." }),
+});
+
+const validateForgotPassword = validate(forgotPasswordSchema);
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, { message: "Reset token is required." }),
+  password: z
+    .string()
+    .min(8, { message: "Password must be at least 8 characters." })
+    .regex(/[A-Z]/, { message: "Must contain an uppercase letter." })
+    .regex(/[a-z]/, { message: "Must contain a lowercase letter." })
+    .regex(/\d/, { message: "Must contain a number." })
+    .regex(/[^A-Za-z0-9]/, { message: "Must contain a special character." }),
+});
+
+const validateResetPassword = validate(resetPasswordSchema);
+
+module.exports = { validateRegister, validateLogin, validateForgotPassword, validateResetPassword };

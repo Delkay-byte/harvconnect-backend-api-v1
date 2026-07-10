@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cart - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/marketplace.css" />
+  <link rel="stylesheet" href="css/cart.css" />
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container">
+        <div class="page-header">
+          <h1>Shopping Cart</h1>
+        </div>
+        <div id="cartContent"></div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("cart");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+
+      if (!HarvConnectAuth.requireAuth()) return;
+
+      var cartContent = document.getElementById("cartContent");
+
+      function getCart() {
+        return JSON.parse(sessionStorage.getItem("hc_cart") || "[]");
+      }
+
+      function saveCart(cart) {
+        sessionStorage.setItem("hc_cart", JSON.stringify(cart));
+      }
+
+      function render() {
+        var cart = getCart();
+
+        if (cart.length === 0) {
+          cartContent.innerHTML =
+            HarvConnectComponents.renderEmptyState(
+              "Your cart is empty. Browse the marketplace to find fresh produce.",
+              '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>'
+            ) +
+            '<div class="hc-text-center hc-mt-16"><a href="marketplace.html" class="hc-btn hc-btn-primary">Browse Marketplace</a></div>';
+          return;
+        }
+
+        var subtotal = 0;
+        var itemsHtml = cart.map(function (item, idx) {
+          var itemTotal = item.price * item.quantity;
+          subtotal += itemTotal;
+          return (
+            '<div class="cart-item">' +
+              '<div class="cart-item-img">' +
+                (item.image
+                  ? '<img src="' + item.image + '" alt="' + item.name + '" />'
+                  : '<div class="placeholder-sm">&#127807;</div>') +
+              "</div>" +
+              '<div class="cart-item-info">' +
+                '<div class="cart-item-name">' + item.name + "</div>" +
+                '<div class="cart-item-farmer">' + item.farmerName + "</div>" +
+                '<div class="cart-item-price">' + HarvConnectUtils.formatCedis(item.price) + " / " + item.unit + "</div>" +
+              "</div>" +
+              '<div class="cart-item-actions">' +
+                '<button class="cart-item-remove" onclick="removeItem(' + idx + ')">Remove</button>' +
+                (item.farmerId ? '<button class="hc-btn hc-btn-ghost hc-btn-sm" onclick="chatFarmerFromCart(\'' + item.farmerId + "','" + (item.farmerName || "Farmer").replace(/'/g, "\\'") + "')\" title=\"Chat " + (item.farmerName || "Farmer") + "\">" +
+                  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>' +
+                "</button>" : "") +
+                '<div class="quantity-controls">' +
+                  '<button onclick="changeQty(' + idx + ',-1)">&minus;</button>' +
+                  '<input type="number" value="' + item.quantity + '" min="1" onchange="setQtyDirect(' + idx + ',this.value)" />' +
+                  '<button onclick="changeQty(' + idx + ',1)">&plus;</button>' +
+                "</div>" +
+              "</div>" +
+            "</div>"
+          );
+        }).join("");
+
+        var deliveryFee = 0;
+        var total = subtotal + deliveryFee;
+
+        cartContent.innerHTML =
+          '<div class="cart-layout">' +
+            '<div class="cart-items">' + itemsHtml + "</div>" +
+            '<div>' +
+              '<div class="order-summary">' +
+                "<h3>Order Summary</h3>" +
+                '<div class="order-summary-row"><span>Subtotal (' + cart.reduce(function (a, c) { return a + c.quantity; }, 0) + " items)</span><span>" + HarvConnectUtils.formatCedis(subtotal) + "</span></div>" +
+                '<div class="order-summary-row"><span>Delivery Fee</span><span>Varies by transport</span></div>' +
+                '<div class="order-summary-row total"><span>Total</span><span class="amount">' + HarvConnectUtils.formatCedis(subtotal) + "</span></div>" +
+                '<div class="checkout-section">' +
+                  "<h4>Delivery Address</h4>" +
+                  '<div class="hc-form-group"><input type="text" id="deliveryAddress" class="hc-input" placeholder="Enter your delivery address" value="' + (getDefaultAddress()) + '" /></div>' +
+                "</div>" +
+                '<div class="checkout-section">' +
+                  "<h4>Payment (Mobile Money)</h4>" +
+                  '<div class="hc-form-group"><select id="momoNetwork" class="hc-select"><option value="MTN">MTN Mobile Money</option><option value="Vodafone">Vodafone Cash</option><option value="AirtelTigo">AirtelTigo Money</option></select></div>' +
+                  '<div class="hc-form-group"><input type="tel" id="momoPhone" class="hc-input" placeholder="Phone number for payment" /></div>' +
+                "</div>" +
+                '<div id="checkoutError" class="hc-form-error" style="display:none;margin-bottom:12px;"></div>' +
+                '<button class="hc-btn hc-btn-primary hc-btn-block hc-btn-lg" id="checkoutBtn" onclick="checkout()">Place Order & Pay</button>' +
+              "</div>" +
+            "</div>" +
+          "</div>";
+      }
+
+      function getDefaultAddress() {
+        var user = HarvConnectAuth.getUser();
+        if (user && user.buyerProfile && user.buyerProfile.deliveryAddress) {
+          return user.buyerProfile.deliveryAddress;
+        }
+        return "";
+      }
+
+      window.removeItem = function (idx) {
+        var cart = getCart();
+        cart.splice(idx, 1);
+        saveCart(cart);
+        render();
+      };
+
+      window.changeQty = function (idx, delta) {
+        var cart = getCart();
+        var newQty = cart[idx].quantity + delta;
+        if (newQty < 1) newQty = 1;
+        if (newQty > cart[idx].maxQty) newQty = cart[idx].maxQty;
+        cart[idx].quantity = newQty;
+        saveCart(cart);
+        render();
+      };
+
+      window.setQtyDirect = function (idx, val) {
+        var cart = getCart();
+        var n = parseInt(val, 10);
+        if (isNaN(n) || n < 1) n = 1;
+        if (n > cart[idx].maxQty) n = cart[idx].maxQty;
+        cart[idx].quantity = n;
+        saveCart(cart);
+        render();
+      };
+
+      window.checkout = async function () {
+        var cart = getCart();
+        if (cart.length === 0) return;
+
+        var address = document.getElementById("deliveryAddress").value.trim();
+        var network = document.getElementById("momoNetwork").value;
+        var phone = document.getElementById("momoPhone").value.trim();
+        var errorEl = document.getElementById("checkoutError");
+        var btn = document.getElementById("checkoutBtn");
+
+        errorEl.style.display = "none";
+
+        if (!address || address.length < 5) {
+          errorEl.textContent = "Please enter a valid delivery address (min. 5 characters).";
+          errorEl.style.display = "block";
+          return;
+        }
+
+        if (!phone || phone.length < 10) {
+          errorEl.textContent = "Please enter a valid phone number for Mobile Money payment.";
+          errorEl.style.display = "block";
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Processing...";
+
+        var totalAmount = cart.reduce(function (sum, item) {
+          return sum + item.price * item.quantity;
+        }, 0);
+
+        var orderIds = [];
+        var errors = [];
+
+        for (var i = 0; i < cart.length; i++) {
+          var item = cart[i];
+          try {
+            var orderRes = await HarvConnectAPI.orders.create({
+              productId: item.productId,
+              quantity: item.quantity,
+              deliveryAddress: address,
+            });
+            orderIds.push(orderRes.data.orderNumber || orderRes.data.id);
+          } catch (err) {
+            errors.push(item.name + ": " + err.message);
+          }
+        }
+
+        if (errors.length > 0 && orderIds.length === 0) {
+          errorEl.textContent = "Order failed: " + errors.join("; ");
+          errorEl.style.display = "block";
+          btn.disabled = false;
+          btn.textContent = "Place Order & Pay";
+          return;
+        }
+
+        try {
+          await HarvConnectAPI.payments.momo({
+            phoneNumber: phone,
+            amount: totalAmount,
+            network: network,
+            reference: orderIds.join(",") || "HARV-" + Date.now(),
+          });
+        } catch (e) {
+          // Payment mock may fail, continue anyway
+        }
+
+        var currentUser = HarvConnectAuth.getUser();
+        var farmerNotifs = {};
+        cart.forEach(function (item) {
+          if (item.farmerId) {
+            if (!farmerNotifs[item.farmerId]) farmerNotifs[item.farmerId] = { farmerId: item.farmerId, farmerName: item.farmerName || "Farmer", products: [] };
+            farmerNotifs[item.farmerId].products.push(item.name);
+          }
+        });
+        Object.keys(farmerNotifs).forEach(function (fid) {
+          var fn = farmerNotifs[fid];
+          HarvConnectNotifications.createFarmerNotification(fid, {
+            orderId: orderIds.join(",") || "order_" + Date.now(),
+            orderNumber: orderIds[0] || "NEW",
+            productName: fn.products.join(", "),
+            buyerId: currentUser ? currentUser.id : "",
+            buyerName: currentUser ? currentUser.fullName || "Buyer" : "Buyer",
+            message: "New order placed for " + fn.products.join(", ") + " by " + (currentUser ? currentUser.fullName || "A buyer" : "A buyer") + ". Please review and accept.",
+          });
+        });
+
+        sessionStorage.removeItem("hc_cart");
+        sessionStorage.setItem("hc_just_ordered", "1");
+        HarvConnectComponents.showToast(
+          "Order placed successfully! " + (orderIds.length > 0 ? "Order #" + orderIds.join(", #") : ""),
+          "success"
+        );
+        setTimeout(function () {
+          window.location.href = "orders.html";
+        }, 800);
+      };
+
+      window.chatFarmerFromCart = function (farmerId, farmerName) {
+        var user = HarvConnectAuth.getUser();
+        if (!user) return;
+        HarvConnectChat.getOrCreateChat({
+          participant1Id: user.id,
+          participant1Name: user.fullName || "Me",
+          participant1Role: "BUYER",
+          participant2Id: farmerId,
+          participant2Name: farmerName || "Farmer",
+          participant2Role: "FARMER",
+          orderId: "",
+        });
+        window.location.href = "chat.html?chat=chat_" + HarvConnectChat.getChatId(user.id, farmerId);
+      };
+
+      render();
+    })();
+  </script>
+</body>
+</html>

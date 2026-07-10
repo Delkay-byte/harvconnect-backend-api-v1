@@ -19,8 +19,14 @@ const getMyOrders = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: orders });
 });
 
+const getOrderById = asyncHandler(async (req, res) => {
+  const order = await orderService.getOrderById(req.params.id, req.user.id, req.user.role);
+  res.status(200).json({ success: true, data: order });
+});
+
 module.exports = {
   placeOrder,
   changeStatus,
   getMyOrders,
+  getOrderById,
 };

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Delivery Tracking - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    .tracking-container { max-width:900px; margin:0 auto; }
+    .tracking-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
+    .tracking-header h1 { font-size:clamp(18px,2.5vw,24px); font-weight:700; margin:0; }
+    .tracking-status-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; }
+    #map { width:100%; height:400px; border-radius:var(--hc-radius-lg); border:1px solid var(--hc-border); z-index:1; }
+    .tracking-info-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:16px; }
+    .tracking-info-card { background:#fff; border:1px solid var(--hc-border); border-radius:var(--hc-radius-lg); padding:16px; }
+    .tracking-info-card .label { font-size:12px; color:var(--hc-text-gray); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+    .tracking-info-card .value { font-size:18px; font-weight:700; color:var(--hc-text); }
+    .tracking-timeline { margin-top:20px; background:#fff; border:1px solid var(--hc-border); border-radius:var(--hc-radius-lg); padding:20px; }
+    .tracking-timeline h3 { font-size:15px; font-weight:700; margin:0 0 12px; }
+    .timeline-steps { display:flex; flex-direction:column; gap:0; }
+    .timeline-step { display:flex; gap:12px; padding:10px 0; position:relative; }
+    .timeline-step:not(:last-child)::after { content:''; position:absolute; left:8px; top:30px; width:2px; height:calc(100% - 20px); background:var(--hc-border); }
+    .timeline-step.completed::after { background:var(--primary-green); }
+    .timeline-dot { width:18px; height:18px; border-radius:50%; border:2px solid var(--hc-border); background:#fff; flex-shrink:0; margin-top:2px; }
+    .timeline-step.completed .timeline-dot { background:var(--primary-green); border-color:var(--primary-green); }
+    .timeline-step.active .timeline-dot { background:var(--primary-green); border-color:var(--primary-green); box-shadow:0 0 0 3px rgba(22,163,74,0.2); }
+    .timeline-step.active::after { background:var(--primary-green); }
+    .timeline-content .step-title { font-size:14px; font-weight:600; color:var(--hc-text); }
+    .timeline-step.completed .step-title { color:var(--primary-green); }
+    .timeline-step.active .step-title { color:var(--primary-green); }
+    .timeline-content .step-desc { font-size:12px; color:var(--hc-text-gray); margin-top:2px; }
+    .tracking-actions { margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; }
+    .tracking-actions .hc-btn { min-width:140px; }
+    .tracking-loading { text-align:center; padding:60px 20px; }
+    .tracking-loading svg { animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .tracking-error { text-align:center; padding:60px 20px; }
+    .party-details { margin-top:16px; }
+    .party-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .party-card { background:#fff; border:1px solid var(--hc-border); border-radius:var(--hc-radius-lg); padding:14px; }
+    .party-card .name { font-size:14px; font-weight:600; }
+    .party-card .detail { font-size:12px; color:var(--hc-text-gray); margin-top:2px; }
+    .party-card .role-tag { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; margin-bottom:4px; }
+  </style>
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container">
+        <div class="tracking-container" id="trackingApp"></div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("orders");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+
+      if (!HarvConnectAuth.requireAuth()) return;
+
+      var params = HarvConnectUtils.getParams();
+      var orderId = params.id;
+      var appEl = document.getElementById("trackingApp");
+      var user = HarvConnectAuth.getUser();
+      var map = null;
+      var driverMarker = null;
+      var farmMarker = null;
+      var buyerMarker = null;
+      var socket = null;
+      var orderData = null;
+      var locationWatchId = null;
+
+      if (!orderId) {
+        appEl.innerHTML = '<div class="tracking-error"><h2>No order specified</h2><p>Please provide an order ID to track.</p><a href="orders.html" class="hc-btn hc-btn-outline">Back to Orders</a></div>';
+        return;
+      }
+
+      function renderLoading() {
+        appEl.innerHTML = '<div class="tracking-loading"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="31.4"><animate attributeName="stroke-dashoffset" values="31.4;0" dur="1s" repeatCount="indefinite"/></circle></svg><p style="margin-top:12px;font-size:14px;color:var(--hc-text-gray);">Loading tracking data...</p></div>';
+      }
+
+      function getStatusInfo(status) {
+        var map = {
+          ASSIGNED:     { label: "Assigned",      color: "#f59e0b", icon: "&#128197;" },
+          PICKING_UP:   { label: "Picking Up",     color: "#3b82f6", icon: "&#128666;" },
+          IN_TRANSIT:   { label: "In Transit",     color: "#8b5cf6", icon: "&#128652;" },
+          ARRIVING_SOON:{ label: "Arriving Soon",  color: "#16a34a", icon: "&#127881;" },
+          DELIVERED:    { label: "Delivered",      color: "#16a34a", icon: "&#9989;" },
+        };
+        return map[status] || { label: status, color: "#6b7280", icon: "" };
+      }
+
+      var TIMELINE_STEPS = [
+        { key: "ASSIGNED",      title: "Transporter Assigned",      desc: "A driver has been assigned to pick up your order" },
+        { key: "PICKING_UP",    title: "Heading to Farm",           desc: "Transporter is on the way to collect the items" },
+        { key: "IN_TRANSIT",    title: "In Transit",                desc: "Items picked up and en route to delivery address" },
+        { key: "ARRIVING_SOON", title: "Arriving Soon",             desc: "Transporter is almost at the destination" },
+        { key: "DELIVERED",     title: "Delivered",                 desc: "Order has been delivered successfully" },
+      ];
+
+      function getTimelineStatus(trackingStatus) {
+        var orderIdx = TIMELINE_STEPS.findIndex(function (s) { return s.key === trackingStatus; });
+        return orderIdx >= 0 ? orderIdx : -1;
+      }
+
+      function isTransporter() {
+        return user && user.role === "TRANSPORT" && orderData && orderData.transporter && orderData.transporter.id === user.id;
+      }
+
+      function renderPage() {
+        if (!orderData) return;
+        var tracking = orderData.tracking || {};
+        var trackStatus = tracking.status || "ASSIGNED";
+        var si = getStatusInfo(trackStatus);
+        var isDriver = isTransporter();
+        var orderNum = orderData.orderNumber || orderData.id.slice(0, 8);
+        var eta = tracking.etaMinutes;
+        var etaText = eta != null ? (eta < 1 ? "Arriving" : eta + " min") : "--";
+
+        appEl.innerHTML =
+          '<div class="tracking-header">' +
+            '<div>' +
+              '<h1>Tracking: #' + orderNum + "</h1>" +
+              '<p style="font-size:13px;color:var(--hc-text-gray);margin:4px 0 0;">' + orderData.product.name + "</p>" +
+            "</div>" +
+            '<span class="tracking-status-badge" style="background:' + si.color + '20;color:' + si.color + ';">' +
+              '<span class="hc-status-dot" style="background:' + si.color + ';"></span>' +
+              si.label +
+            "</span>" +
+          "</div>" +
+          '<div class="tracking-info-grid">' +
+            '<div class="tracking-info-card"><div class="label">ETA</div><div class="value" id="etaDisplay">' + etaText + "</div></div>" +
+            '<div class="tracking-info-card"><div class="label">Status</div><div class="value" id="statusDisplay">' + si.label + "</div></div>" +
+            '<div class="tracking-info-card"><div class="label">Distance</div><div class="value" id="distDisplay">--</div></div>' +
+            '<div class="tracking-info-card"><div class="label">Vehicle</div><div class="value">' + (orderData.transporter?.transportProfile?.vehicleType || "N/A") + "</div></div>" +
+          "</div>" +
+          '<div id="map"></div>' +
+          '<div class="tracking-actions" id="trackingActions"></div>' +
+          '<div class="tracking-timeline" id="timelineSection">' +
+            '<h3>Journey Timeline</h3>' +
+            '<div class="timeline-steps">' +
+              TIMELINE_STEPS.map(function (step, i) {
+                var currentIdx = getTimelineStatus(trackStatus);
+                var cls = i < currentIdx ? "completed" : (i === currentIdx ? "active" : "");
+                return '<div class="timeline-step ' + cls + '">' +
+                  '<div class="timeline-dot"></div>' +
+                  '<div class="timeline-content">' +
+                    '<div class="step-title">' + step.title + "</div>" +
+                    '<div class="step-desc">' + step.desc + "</div>" +
+                  "</div>" +
+                "</div>";
+              }).join("") +
+            "</div>" +
+          "</div>" +
+          '<div class="party-details">' +
+            '<h3 style="font-size:15px;font-weight:700;margin:0 0 10px;">Parties Involved</h3>' +
+            '<div class="party-grid">' +
+              '<div class="party-card">' +
+                '<span class="role-tag" style="background:#16a34a20;color:#16a34a;">Farmer</span>' +
+                '<div class="name">' + (orderData.farmer?.fullName || "Farmer") + "</div>" +
+                '<div class="detail">' + (orderData.pickupAddress || "Farm location") + "</div>" +
+              "</div>" +
+              '<div class="party-card">' +
+                '<span class="role-tag" style="background:#3b82f620;color:#3b82f6;">Buyer</span>' +
+                '<div class="name">' + (orderData.buyer?.fullName || "Buyer") + "</div>" +
+                '<div class="detail">' + (orderData.deliveryAddress || "Delivery location") + "</div>" +
+              "</div>" +
+            "</div>" +
+          "</div>";
+
+        initMap();
+        renderActions();
+
+        if (isDriver && trackStatus === "IN_TRANSIT") {
+          startDriverGeolocation();
+        }
+      }
+
+      function initMap() {
+        var tracking = orderData.tracking || {};
+        var hasLocation = tracking.currentLat != null && tracking.currentLng != null;
+        var farmerProfile = orderData.farmer?.farmerProfile;
+        var buyerProfile = null;
+
+        var centerLat = 5.6037;
+        var centerLng = -0.187;
+
+        if (hasLocation) {
+          centerLat = tracking.currentLat;
+          centerLng = tracking.currentLng;
+        } else if (farmerProfile && farmerProfile.latitude) {
+          centerLat = farmerProfile.latitude;
+          centerLng = farmerProfile.longitude;
+        }
+
+        map = L.map("map", { zoomControl: true }).setView([centerLat, centerLng], 13);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org">OpenStreetMap</a>',
+          maxZoom: 19,
+        }).addTo(map);
+
+        // Farm marker
+        if (farmerProfile && farmerProfile.latitude && farmerProfile.longitude) {
+          farmMarker = L.marker([farmerProfile.latitude, farmerProfile.longitude], {
+            icon: L.divIcon({
+              html: '<div style="background:#16a34a;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.2);">&#127793;</div>',
+              className: "",
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
+            }),
+          }).addTo(map).bindPopup("<b>Farm</b><br>" + (orderData.pickupAddress || "Pickup location"));
+        }
+
+        // Driver marker
+        if (hasLocation) {
+          driverMarker = L.marker([tracking.currentLat, tracking.currentLng], {
+            icon: L.divIcon({
+              html: '<div style="background:#3b82f6;color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.25);">&#128652;</div>',
+              className: "",
+              iconSize: [36, 36],
+              iconAnchor: [18, 18],
+            }),
+          }).addTo(map).bindPopup("<b>Driver</b><br>Current location");
+
+          map.setView([tracking.currentLat, tracking.currentLng], 13);
+        }
+
+        setTimeout(function () { map.invalidateSize(); }, 200);
+      }
+
+      function updateDriverMarker(lat, lng) {
+        if (!map) return;
+        if (driverMarker) {
+          driverMarker.setLatLng([lat, lng]);
+        } else {
+          driverMarker = L.marker([lat, lng], {
+            icon: L.divIcon({
+              html: '<div style="background:#3b82f6;color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.25);">&#128652;</div>',
+              className: "",
+              iconSize: [36, 36],
+              iconAnchor: [18, 18],
+            }),
+          }).addTo(map).bindPopup("<b>Driver</b><br>Current location");
+        }
+        map.panTo([lat, lng]);
+      }
+
+      function renderActions() {
+        var container = document.getElementById("trackingActions");
+        if (!container) return;
+        var tracking = orderData.tracking || {};
+        var trackStatus = tracking.status || "ASSIGNED";
+        var isDriver = isTransporter();
+
+        if (!isDriver) {
+          container.innerHTML = '<a href="orders.html" class="hc-btn hc-btn-outline">&larr; Back to Orders</a>';
+          return;
+        }
+
+        var actions = '<a href="orders.html" class="hc-btn hc-btn-outline">&larr; Back</a>';
+
+        if (trackStatus === "ASSIGNED" || trackStatus === "PICKING_UP") {
+          actions += '<button class="hc-btn hc-btn-primary" onclick="handleStartPickup()">Start Pickup Journey</button>';
+        }
+        if (trackStatus === "PICKING_UP") {
+          actions += '<button class="hc-btn hc-btn-primary" onclick="handlePickedUp()">Mark as Picked Up</button>';
+        }
+        if (trackStatus === "IN_TRANSIT") {
+          actions += '<button class="hc-btn hc-btn-primary" onclick="handleMarkDelivered()">Mark as Delivered</button>';
+        }
+        if (trackStatus === "ARRIVING_SOON") {
+          actions += '<button class="hc-btn hc-btn-primary" onclick="handleMarkDelivered()">Mark as Delivered</button>';
+        }
+
+        container.innerHTML = actions;
+      }
+
+      function connectSocket() {
+        var token = sessionStorage.getItem("hc_token");
+        if (!token) return;
+        try {
+          socket = io("http://localhost:5000", {
+            auth: { token: token },
+            reconnection: true,
+          });
+
+          socket.on("connect", function () {
+            socket.emit("tracking:join", { orderId: orderId });
+          });
+
+          socket.on("tracking:update", function (data) {
+            if (data.lat != null && data.lng != null) {
+              updateDriverMarker(data.lat, data.lng);
+            }
+            if (data.eta != null) {
+              var etaEl = document.getElementById("etaDisplay");
+              if (etaEl) etaEl.textContent = data.eta + " min";
+            }
+            if (data.status) {
+              var statusEl = document.getElementById("statusDisplay");
+              if (statusEl) statusEl.textContent = getStatusInfo(data.status).label;
+            }
+          });
+
+          socket.on("tracking:status", function (data) {
+            if (data.status) {
+              HarvConnectComponents.showToast(data.message || "Status updated", "info");
+              loadTracking();
+            }
+          });
+
+          socket.on("disconnect", function () {
+            // Will auto-reconnect
+          });
+        } catch (e) {
+          // Socket connection failed, will use polling only
+        }
+      }
+
+      function startDriverGeolocation() {
+        if (!navigator.geolocation) return;
+        locationWatchId = navigator.geolocation.watchPosition(
+          function (pos) {
+            var lat = pos.coords.latitude;
+            var lng = pos.coords.longitude;
+            updateDriverMarker(lat, lng);
+
+            // Send to server via HTTP (reliable) and Socket.IO (real-time)
+            try { HarvConnectAPI.tracking.updateLocation(orderId, lat, lng); } catch (e) {}
+            if (socket && socket.connected) {
+              socket.emit("tracking:location", { orderId: orderId, lat: lat, lng: lng });
+            }
+          },
+          function (err) {
+            console.warn("Geolocation error:", err.message);
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+        );
+      }
+
+      window.handleStartPickup = async function () {
+        try {
+          await HarvConnectAPI.tracking.start(orderId);
+          HarvConnectComponents.showToast("Journey started! Head to the farm.", "success");
+          loadTracking();
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed: " + err.message, "error");
+        }
+      };
+
+      window.handlePickedUp = async function () {
+        try {
+          await HarvConnectAPI.tracking.markPickedUp(orderId);
+          HarvConnectComponents.showToast("Items picked up! En route to delivery.", "success");
+          loadTracking();
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed: " + err.message, "error");
+        }
+      };
+
+      window.handleMarkDelivered = async function () {
+        if (!confirm("Confirm delivery? This will mark the order as delivered.")) return;
+        try {
+          await HarvConnectAPI.tracking.markDelivered(orderId);
+          HarvConnectComponents.showToast("Order marked as delivered!", "success");
+          loadTracking();
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed: " + err.message, "error");
+        }
+      };
+
+      async function loadTracking() {
+        renderLoading();
+        try {
+          var res = await HarvConnectAPI.tracking.get(orderId);
+          orderData = res.data;
+          renderPage();
+          if (!socket) connectSocket();
+        } catch (err) {
+          appEl.innerHTML =
+            '<div class="tracking-error">' +
+              '<h2>Could not load tracking</h2>' +
+              '<p style="color:var(--hc-text-gray);">' + err.message + "</p>" +
+              '<button class="hc-btn hc-btn-primary" onclick="loadTracking()">Retry</button>' +
+              '<a href="orders.html" class="hc-btn hc-btn-outline" style="margin-left:8px;">Back to Orders</a>' +
+            "</div>";
+        }
+      }
+
+      // Poll for updates every 10s as fallback
+      setInterval(function () {
+        if (orderId && orderData) {
+          HarvConnectAPI.tracking.get(orderId).then(function (res) {
+            if (res.data && res.data.tracking) {
+              var t = res.data.tracking;
+              if (t.currentLat != null && t.currentLng != null) {
+                updateDriverMarker(t.currentLat, t.currentLng);
+              }
+              if (t.status) {
+                var si = getStatusInfo(t.status);
+                var statusEl = document.getElementById("statusDisplay");
+                if (statusEl) statusEl.textContent = si.label;
+                var badge = document.querySelector(".tracking-status-badge");
+                if (badge) {
+                  badge.style.background = si.color + "20";
+                  badge.style.color = si.color;
+                  badge.innerHTML = '<span class="hc-status-dot" style="background:' + si.color + ';"></span>' + si.label;
+                }
+              }
+              if (t.etaMinutes != null) {
+                var etaEl = document.getElementById("etaDisplay");
+                if (etaEl) etaEl.textContent = t.etaMinutes + " min";
+              }
+            }
+          }).catch(function () {});
+        }
+      }, 10000);
+
+      loadTracking();
+    })();
+  </script>
+</body>
+</html>

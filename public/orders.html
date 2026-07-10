@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Orders - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/cart.css" />
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container">
+        <div class="page-header">
+          <h1 id="pageTitle">My Orders</h1>
+          <p id="pageSubtitle">Track and manage your orders</p>
+        </div>
+        <div class="status-tabs" id="statusTabs"></div>
+        <div id="ordersContent"></div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("orders");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+
+      if (!HarvConnectAuth.requireAuth()) return;
+
+      var user = HarvConnectAuth.getUser();
+      var role = user ? user.role : "";
+      var content = document.getElementById("ordersContent");
+      var allOrders = [];
+      var currentFilter = "ALL";
+
+      if (role === "FARMER") {
+        document.getElementById("pageTitle").textContent = "Incoming Orders";
+        document.getElementById("pageSubtitle").textContent = "Manage orders from buyers";
+      }
+
+      var statuses = ["ALL", "PENDING", "ACCEPTED", "READY_FOR_TRANSPORT", "IN_TRANSIT", "DELIVERED", "REJECTED", "CANCELLED"];
+      document.getElementById("statusTabs").innerHTML = statuses.map(function (s) {
+        var label = s === "ALL" ? "All" : HarvConnectUtils.getStatusLabel(s);
+        return '<button class="status-tab' + (s === "ALL" ? " active" : "") + '" data-status="' + s + '">' + label + "</button>";
+      }).join("");
+
+      document.getElementById("statusTabs").addEventListener("click", function (e) {
+        var tab = e.target.closest(".status-tab");
+        if (!tab) return;
+        document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.remove("active"); });
+        tab.classList.add("active");
+        currentFilter = tab.dataset.status;
+        renderOrders();
+      });
+
+      async function loadOrders() {
+        content.innerHTML = HarvConnectComponents.renderSkeletonCards(3);
+        try {
+          var res = await HarvConnectAPI.orders.list();
+          allOrders = res.data || [];
+          renderOrders();
+        } catch (err) {
+          content.innerHTML = HarvConnectComponents.renderErrorState(
+            "Failed to load orders. Please try again.",
+            "loadOrders"
+          );
+        }
+      }
+
+      function renderOrders() {
+        var filtered = currentFilter === "ALL"
+          ? allOrders
+          : allOrders.filter(function (o) { return o.status === currentFilter; });
+
+        if (filtered.length === 0) {
+          content.innerHTML = HarvConnectComponents.renderEmptyState(
+            "No orders found for this filter.",
+            '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
+          );
+          return;
+        }
+
+        content.innerHTML = '<div class="orders-list">' + filtered.map(function (o) {
+          var statusColor = HarvConnectUtils.getStatusColor(o.status);
+          var statusLabel = HarvConnectUtils.getStatusLabel(o.status);
+          var actionsHtml = "";
+
+          if (role === "FARMER" && o.status === "PENDING") {
+            actionsHtml =
+              '<button class="hc-btn hc-btn-primary hc-btn-sm" onclick="updateOrderStatus(\'' + o.id + "','ACCEPTED')\">Accept</button>" +
+              '<button class="hc-btn hc-btn-danger hc-btn-sm" onclick="updateOrderStatus(\'' + o.id + "','REJECTED')\">Reject</button>";
+          } else if (role === "FARMER" && o.status === "ACCEPTED") {
+            actionsHtml = '<button class="hc-btn hc-btn-primary hc-btn-sm" onclick="updateOrderStatus(\'' + o.id + "','READY_FOR_TRANSPORT')\">Mark Ready</button>";
+          }
+
+          var productName = o.product ? o.product.name : (o.productName || "Product");
+          var quantity = o.quantity || 0;
+          var price = o.totalPrice || 0;
+          var chatBtn = "";
+          if (role === "BUYER" && o.farmer) {
+            chatBtn = '<button class="hc-btn hc-btn-outline hc-btn-sm" onclick="openOrderChat(\'' + o.id + "','" + o.farmer.id + "','" + (o.farmer.fullName || "Farmer") + "')\">Chat Seller</button>";
+          } else if (role === "FARMER" && o.buyer) {
+            chatBtn = '<button class="hc-btn hc-btn-outline hc-btn-sm" onclick="openOrderChat(\'' + o.id + "','" + o.buyer.id + "','" + (o.buyer.fullName || "Buyer") + "')\">Chat Buyer</button>";
+          }
+          var trackBtn = (o.status === "IN_TRANSIT" || o.status === "DELIVERED")
+            ? '<a href="tracking.html?id=' + o.id + '" class="hc-btn hc-btn-outline hc-btn-sm">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Track' +
+              "</a>"
+            : "";
+
+          return (
+            '<div class="order-card">' +
+              '<div class="order-card-header">' +
+                '<div>' +
+                  '<div class="order-number">Order #' + (o.orderNumber || o.id.slice(0, 8)) + "</div>" +
+                  '<div class="order-date">' + HarvConnectUtils.formatDateTime(o.createdAt) + "</div>" +
+                "</div>" +
+                '<span class="hc-badge" style="background:' + statusColor + '20;color:' + statusColor + ';">' +
+                  '<span class="hc-status-dot" style="background:' + statusColor + ';"></span>' +
+                  statusLabel +
+                "</span>" +
+              "</div>" +
+              '<div class="order-card-items">' +
+                '<div class="order-card-item"><span>' + productName + " &times; " + quantity + "</span><span>" + HarvConnectUtils.formatCedis(price) + "</span></div>" +
+              "</div>" +
+              '<div class="order-card-footer">' +
+                '<div class="order-total">' + HarvConnectUtils.formatCedis(price) + "</div>" +
+                '<div class="hc-flex hc-gap-8">' + trackBtn + chatBtn + actionsHtml + "</div>" +
+              "</div>" +
+            "</div>"
+          );
+        }).join("") + "</div>";
+      }
+
+      window.openOrderChat = function (orderId, otherUserId, otherName) {
+        var user = HarvConnectAuth.getUser();
+        if (!user) return;
+        HarvConnectChat.getOrCreateChat({
+          participant1Id: user.id,
+          participant1Name: user.fullName || "Me",
+          participant1Role: user.role,
+          participant2Id: otherUserId,
+          participant2Name: otherName || "User",
+          participant2Role: user.role === "BUYER" ? "FARMER" : (user.role === "FARMER" ? "BUYER" : "BUYER"),
+          orderId: orderId || "",
+        });
+        window.location.href = "chat.html?chat=chat_" + HarvConnectChat.getChatId(user.id, otherUserId);
+      };
+
+      window.updateOrderStatus = async function (orderId, status) {
+        try {
+          await HarvConnectAPI.orders.updateStatus(orderId, status);
+          HarvConnectComponents.showToast("Order status updated to " + HarvConnectUtils.getStatusLabel(status), "success");
+          loadOrders();
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed to update order: " + err.message, "error");
+        }
+      };
+
+      loadOrders();
+
+      if (sessionStorage.getItem("hc_just_ordered")) {
+        sessionStorage.removeItem("hc_just_ordered");
+        setTimeout(loadOrders, 1000);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -23,6 +23,7 @@ const createProduct = asyncHandler(async (req, res) => {
       return res.status(500).json({
         success: false,
         message: "Failed to upload image. Please try again.",
+        debug: error.message,
       });
     }
   }
@@ -40,10 +41,20 @@ const getProducts = asyncHandler(async (req, res) => {
   // Forward query parameters straight to the service orchestrator
   const { products, meta } = await productService.getAllProducts(req.query);
 
+  // Transform products to match frontend expectations
+  const transformedProducts = products.map((product) => ({
+    ...product,
+    image: product.imageUrl, // Frontend looks for 'image'
+    farmerName: product.farmer?.fullName || "HarvConnect Farmer",
+    location: product.farmer?.farmerProfile?.address || "Location pending",
+    stock: Number(product.quantity), // Coerce Decimal to Number
+    price: Number(product.price), // Coerce Decimal to Number
+  }));
+
   res.status(200).json({
     success: true,
     message: "Marketplace products retrieved successfully.",
-    data: { products, meta },
+    data: { products: transformedProducts, meta },
   });
 });
 

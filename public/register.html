@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card" style="max-width:520px;">
+      <div class="auth-logo">
+        <a href="index.html"><img src="images/HarvConnect-logo.png" alt="HarvConnect" /></a>
+        <h2>Join <span>Harv</span>Connect</h2>
+      </div>
+      <p class="auth-subtitle">Create your account and start trading</p>
+
+      <form id="registerForm" novalidate>
+        <div class="hc-form-group">
+          <label>I want to join as</label>
+          <div class="role-selector" id="roleSelector">
+            <div class="role-option active" data-role="FARMER">
+              <div class="role-option-icon">&#127807;</div>
+              <div class="role-option-label">Farmer</div>
+            </div>
+            <div class="role-option" data-role="BUYER">
+              <div class="role-option-icon">&#128722;</div>
+              <div class="role-option-label">Buyer</div>
+            </div>
+            <div class="role-option" data-role="TRANSPORT">
+              <div class="role-option-icon">&#128666;</div>
+              <div class="role-option-label">Transport</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hc-form-group">
+          <label for="fullName">Full Name</label>
+          <input type="text" id="fullName" class="hc-input" placeholder="e.g. Kwame Mensah" required />
+        </div>
+
+        <div class="hc-form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" class="hc-input" placeholder="you@example.com" required autocomplete="email" />
+        </div>
+
+        <div class="hc-form-group">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" class="hc-input" placeholder="e.g. 0241234567" required />
+        </div>
+
+        <div class="hc-form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" class="hc-input" placeholder="Min. 8 characters" required autocomplete="new-password" />
+          <div class="pw-strength" id="pwStrength" data-strength="0">
+            <div class="pw-strength-bar"></div>
+            <div class="pw-strength-bar"></div>
+            <div class="pw-strength-bar"></div>
+            <div class="pw-strength-bar"></div>
+            <div class="pw-strength-bar"></div>
+          </div>
+          <div class="pw-strength-text" id="pwStrengthText"></div>
+        </div>
+
+        <div id="transportFields" class="hc-hidden">
+          <div class="hc-form-group">
+            <label for="vehicleType">Vehicle Type</label>
+            <select id="vehicleType" class="hc-select">
+              <option value="">Select vehicle type</option>
+              <option value="MOTORBIKE">Motorbike</option>
+              <option value="TRICYCLE">Tricycle</option>
+              <option value="PICKUP">Pickup</option>
+              <option value="MINI_TRUCK">Mini Truck</option>
+              <option value="TRUCK">Truck</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="hc-form-group">
+            <label for="capacity">Vehicle Capacity (kg)</label>
+            <input type="number" id="capacity" class="hc-input" placeholder="e.g. 500" min="1" />
+          </div>
+        </div>
+
+        <div id="registerError" class="hc-form-error" style="display:none;margin-bottom:16px;"></div>
+
+        <button type="submit" class="hc-btn hc-btn-primary hc-btn-block hc-btn-lg" id="registerBtn">
+          Create Account
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Already have an account? <a href="login.html">Sign in</a>
+      </div>
+      <div class="auth-footer" style="margin-top:8px;">
+        <a href="index.html" style="font-weight:400;color:var(--hc-text-gray);">Back to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script>
+    (function () {
+      if (HarvConnectAuth.isAuthenticated()) {
+        window.location.href = HarvConnectAuth.getLoginRedirect();
+        return;
+      }
+
+      var selectedRole = "FARMER";
+      var roleSelector = document.getElementById("roleSelector");
+      var transportFields = document.getElementById("transportFields");
+      var form = document.getElementById("registerForm");
+      var errorEl = document.getElementById("registerError");
+      var btn = document.getElementById("registerBtn");
+      var pwInput = document.getElementById("password");
+      var pwStrength = document.getElementById("pwStrength");
+      var pwStrengthText = document.getElementById("pwStrengthText");
+
+      roleSelector.addEventListener("click", function (e) {
+        var option = e.target.closest(".role-option");
+        if (!option) return;
+        roleSelector.querySelectorAll(".role-option").forEach(function (o) {
+          o.classList.remove("active");
+        });
+        option.classList.add("active");
+        selectedRole = option.dataset.role;
+        transportFields.classList.toggle("hc-hidden", selectedRole !== "TRANSPORT");
+      });
+
+      HarvConnectComponents.setupPasswordToggle("password");
+
+      pwInput.addEventListener("input", function () {
+        var errors = HarvConnectUtils.validatePassword(pwInput.value);
+        var strength = 5 - errors.length;
+        pwStrength.setAttribute("data-strength", String(strength));
+        if (pwInput.value.length === 0) {
+          pwStrengthText.textContent = "";
+        } else if (strength <= 2) {
+          pwStrengthText.textContent = "Weak - add: " + errors.join(", ");
+        } else if (strength <= 4) {
+          pwStrengthText.textContent = "Fair - add: " + errors.join(", ");
+        } else {
+          pwStrengthText.textContent = "Strong password";
+          pwStrengthText.style.color = "var(--hc-success)";
+        }
+      });
+
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        errorEl.style.display = "none";
+
+        var fullName = document.getElementById("fullName").value.trim();
+        var email = document.getElementById("email").value.trim();
+        var phone = document.getElementById("phone").value.trim();
+        var password = document.getElementById("password").value;
+
+        if (!fullName || !email || !phone || !password) {
+          errorEl.textContent = "Please fill in all required fields.";
+          errorEl.style.display = "block";
+          return;
+        }
+
+        if (!HarvConnectUtils.validateEmail(email)) {
+          errorEl.textContent = "Please enter a valid email address.";
+          errorEl.style.display = "block";
+          return;
+        }
+
+        var pwErrors = HarvConnectUtils.validatePassword(password);
+        if (pwErrors.length > 0) {
+          errorEl.textContent = "Password requirements: " + pwErrors.join(", ");
+          errorEl.style.display = "block";
+          return;
+        }
+
+        var payload = {
+          fullName: fullName,
+          email: email,
+          phone: phone,
+          password: password,
+          role: selectedRole,
+        };
+
+        if (selectedRole === "TRANSPORT") {
+          var vt = document.getElementById("vehicleType").value;
+          var cap = document.getElementById("capacity").value;
+          if (!vt) {
+            errorEl.textContent = "Please select a vehicle type.";
+            errorEl.style.display = "block";
+            return;
+          }
+          payload.vehicleType = vt;
+          if (cap) payload.capacity = Number(cap);
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Creating account...";
+
+        try {
+          await HarvConnectAuth.register(payload);
+          HarvConnectComponents.showToast("Account created! Please check your email for verification.", "success");
+          setTimeout(function () {
+            window.location.href = "login.html";
+          }, 1500);
+        } catch (err) {
+          var regErrMsg;
+          if (err.status === 409) {
+            regErrMsg = "An account with this email already exists. Please use a different email or sign in.";
+          } else if (err.status === 400) {
+            var msg = err.message || "";
+            if (msg.toLowerCase().indexOf("name") !== -1 || msg.toLowerCase().indexOf("fullname") !== -1) {
+              regErrMsg = "This name is already registered. Please use a different name.";
+            } else {
+              regErrMsg = msg || "Invalid input. Please check your details and try again.";
+            }
+          } else {
+            regErrMsg = err.message || "Registration failed. Please try again.";
+          }
+          errorEl.textContent = regErrMsg;
+          errorEl.style.display = "block";
+          HarvConnectComponents.showToast(regErrMsg, "error");
+          btn.disabled = false;
+          btn.textContent = "Create Account";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

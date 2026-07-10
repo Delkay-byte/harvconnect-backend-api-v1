@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transport Dashboard - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <style>
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:12px; margin-bottom:28px; }
+    .stat-card { background:#fff; border:1px solid var(--hc-border); border-radius:var(--hc-radius-lg); padding:18px 16px; text-align:center; }
+    .stat-card .stat-number { font-size:26px; font-weight:800; color:var(--hc-green); }
+    .stat-card .stat-label { font-size:12px; color:var(--hc-text-gray); margin-top:2px; }
+    .settings-toggle { display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:600; color:var(--hc-text-gray); cursor:pointer; padding:8px 0; border:none; background:none; font-family:var(--hc-font); }
+    .settings-toggle:hover { color:var(--hc-green); }
+    .settings-toggle svg { transition:transform 0.3s; }
+    .settings-toggle.open svg { transform:rotate(180deg); }
+    .settings-panel { display:none; }
+    .settings-panel.open { display:block; }
+    .dashboard-greeting { margin-bottom:24px; }
+    .dashboard-greeting h1 { font-size:clamp(22px,3vw,28px); font-weight:700; margin-bottom:4px; }
+    .dashboard-greeting p { font-size:14px; color:var(--hc-text-gray); }
+    .transport-info-grid .hc-input { font-size:14px; padding:8px 10px; width:100%; box-sizing:border-box; }
+    .transport-info-grid select.hc-input { appearance:auto; }
+  </style>
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container">
+
+        <div class="dashboard-greeting" id="greetingSection">
+          <h1 id="greetingText">Good morning, Transporter</h1>
+          <p id="greetingSub">Ready to make deliveries</p>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-number" id="statTotal">0</div>
+            <div class="stat-label">Total Requests</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statPending">0</div>
+            <div class="stat-label">Pending</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statAccepted">0</div>
+            <div class="stat-label">Deliveries Completed</div>
+          </div>
+        </div>
+
+        <div id="driverNotifSection">
+          <div class="page-header">
+            <h2>Delivery Requests</h2>
+            <p>Notifications from buyers who have selected you for delivery</p>
+          </div>
+          <div id="driverNotifContent"></div>
+        </div>
+
+        <div id="activeDeliveriesSection" style="margin-top:32px;">
+          <div class="page-header">
+            <h2>My Active Deliveries</h2>
+            <p>Orders assigned to you that are in transit</p>
+          </div>
+          <div id="activeDeliveriesContent"></div>
+        </div>
+
+        <div style="margin-top:32px;border-top:1px solid var(--hc-border);padding-top:16px;">
+          <button class="settings-toggle" id="settingsToggle" onclick="toggleSettings()">
+            Settings &amp; Vehicle Details
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+
+          <div class="settings-panel" id="settingsPanel">
+            <div class="transport-status-card" style="margin-bottom:24px;">
+              <div class="transport-status-row">
+                <div>
+                  <h3 style="margin-bottom:4px;">Availability Status</h3>
+                  <p style="font-size:13px;color:var(--hc-text-gray);">Toggle to show you're available for deliveries</p>
+                </div>
+                <label class="transport-toggle">
+                  <input type="checkbox" id="availToggle" checked />
+                  <span class="transport-toggle-slider"></span>
+                </label>
+              </div>
+
+              <div class="transport-info-grid" id="infoGrid">
+                <div class="transport-info-item">
+                  <label>Vehicle Type</label>
+                  <select id="vehicleTypeInput" class="hc-input">
+                    <option value="MOTORBIKE">Motorbike</option>
+                    <option value="TRICYCLE">Tricycle</option>
+                    <option value="PICKUP">Pickup</option>
+                    <option value="MINI_TRUCK">Mini Truck</option>
+                    <option value="TRUCK">Truck</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div class="transport-info-item">
+                  <label>Capacity (kg)</label>
+                  <input type="number" id="capacityInput" class="hc-input" placeholder="e.g. 500" min="0" />
+                </div>
+                <div class="transport-info-item">
+                  <label>Current Region</label>
+                  <select id="regionInput" class="hc-input">
+                    <option value="">Select region</option>
+                    <option value="Greater Accra">Greater Accra</option>
+                    <option value="Ashanti">Ashanti</option>
+                    <option value="Eastern">Eastern</option>
+                    <option value="Central">Central</option>
+                    <option value="Western">Western</option>
+                    <option value="Volta">Volta</option>
+                    <option value="Northern">Northern</option>
+                    <option value="Upper East">Upper East</option>
+                    <option value="Upper West">Upper West</option>
+                    <option value="Brong Ahafo">Brong Ahafo</option>
+                    <option value="Western North">Western North</option>
+                    <option value="Oti">Oti</option>
+                    <option value="Bono East">Bono East</option>
+                    <option value="Ahafo">Ahafo</option>
+                    <option value="Savannah">Savannah</option>
+                    <option value="North East">North East</option>
+                  </select>
+                </div>
+                <div class="transport-info-item">
+                  <label>Current Address</label>
+                  <input type="text" id="addressInput" class="hc-input" placeholder="e.g. Accra Mall, Accra" />
+                </div>
+              </div>
+
+              <button class="hc-btn hc-btn-primary hc-btn-sm" onclick="saveVehicleInfo()" style="margin-top:12px;">Save Vehicle Info</button>
+            </div>
+
+            <div class="hc-card">
+              <div class="hc-card-header">
+                <h3>Update Location (GPS)</h3>
+                <button class="hc-btn hc-btn-outline hc-btn-sm" onclick="getGeolocation()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                  Use My GPS Location
+                </button>
+              </div>
+              <div class="hc-grid-2">
+                <div class="hc-form-group">
+                  <label for="latInput">Latitude</label>
+                  <input type="number" id="latInput" class="hc-input" placeholder="e.g. 5.6037" step="any" />
+                </div>
+                <div class="hc-form-group">
+                  <label for="lngInput">Longitude</label>
+                  <input type="number" id="lngInput" class="hc-input" placeholder="e.g. -0.1870" step="any" />
+                </div>
+              </div>
+              <button class="hc-btn hc-btn-primary" onclick="updateLocation()">Save Location</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("transport");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+      HarvConnectComponents.setupNotifListener();
+
+      if (!HarvConnectAuth.requireAuth() || !HarvConnectAuth.requireRole("TRANSPORT")) return;
+
+      var user = HarvConnectAuth.getUser();
+
+      async function refreshProfile() {
+        try {
+          var fresh = await HarvConnectAuth.fetchAndCacheUser();
+          if (fresh) user = fresh;
+        } catch (e) {}
+        loadProfile();
+      }
+
+      function saveDriverToRegistry() {
+        if (!user || !user.id) return;
+        var tp = {
+          vehicleType: document.getElementById("vehicleTypeInput").value,
+          capacity: parseInt(document.getElementById("capacityInput").value) || 0,
+          currentRegion: document.getElementById("regionInput").value,
+          currentAddress: document.getElementById("addressInput").value.trim(),
+          currentLat: parseFloat(document.getElementById("latInput").value) || 5.6037,
+          currentLng: parseFloat(document.getElementById("lngInput").value) || -0.187,
+          isAvailable: document.getElementById("availToggle").checked,
+        };
+        var driverEntry = {
+          id: user.id,
+          fullName: user.fullName || "Transporter",
+          email: user.email || "",
+          phone: user.phone || "+233 000 000 000",
+          transportProfile: tp,
+          lastUpdated: Date.now(),
+        };
+        try {
+          var registry = JSON.parse(localStorage.getItem("hc_driver_registry") || "{}");
+          registry[user.id] = driverEntry;
+          localStorage.setItem("hc_driver_registry", JSON.stringify(registry));
+        } catch (e) {}
+      }
+
+      function updateGreeting() {
+        var name = user ? user.fullName || "Transporter" : "Transporter";
+        var greeting = HarvConnectUtils.getGreeting(name);
+        document.getElementById("greetingText").textContent = greeting;
+        var sub = document.getElementById("greetingSub");
+        var notifs = HarvConnectNotifications.getDriverNotifications();
+        var pending = notifs.filter(function (n) { return !n.read; }).length;
+        if (pending > 0) {
+          sub.textContent = "You have " + pending + " pending delivery request" + (pending > 1 ? "s" : "");
+        } else {
+          sub.textContent = "No pending delivery requests";
+        }
+      }
+
+      function updateStats() {
+        var notifs = HarvConnectNotifications.getDriverNotifications();
+        var total = notifs.length;
+        var pending = notifs.filter(function (n) { return !n.read; }).length;
+        var accepted = (function () {
+          try { return parseInt(localStorage.getItem("hc_deliveries_completed") || "0", 10); } catch (e) { return 0; }
+        })();
+        document.getElementById("statTotal").textContent = total;
+        document.getElementById("statPending").textContent = pending;
+        document.getElementById("statAccepted").textContent = accepted;
+      }
+
+      function loadProfile() {
+        if (user && user.transportProfile) {
+          var tp = user.transportProfile;
+          document.getElementById("vehicleTypeInput").value = tp.vehicleType || "PICKUP";
+          document.getElementById("capacityInput").value = tp.capacity || "";
+          document.getElementById("regionInput").value = tp.currentRegion || "";
+          document.getElementById("addressInput").value = tp.currentAddress || "";
+          document.getElementById("availToggle").checked = tp.isAvailable !== false;
+          if (tp.currentLat) document.getElementById("latInput").value = tp.currentLat;
+          if (tp.currentLng) document.getElementById("lngInput").value = tp.currentLng;
+        }
+        saveDriverToRegistry();
+      }
+
+      window.saveVehicleInfo = function () {
+        saveDriverToRegistry();
+        HarvConnectComponents.showToast("Vehicle info saved successfully!", "success");
+      };
+
+      refreshProfile();
+      updateGreeting();
+      updateStats();
+
+      window.toggleSettings = function () {
+        var panel = document.getElementById("settingsPanel");
+        var toggle = document.getElementById("settingsToggle");
+        panel.classList.toggle("open");
+        toggle.classList.toggle("open");
+      };
+
+      document.getElementById("availToggle").addEventListener("change", async function () {
+        var lat = parseFloat(document.getElementById("latInput").value) || 5.6037;
+        var lng = parseFloat(document.getElementById("lngInput").value) || -0.187;
+        saveDriverToRegistry();
+        try {
+          await HarvConnectAPI.transport.updateStatus({
+            available: this.checked,
+            latitude: lat,
+            longitude: lng,
+          });
+          HarvConnectComponents.showToast(
+            "You are now " + (this.checked ? "available" : "unavailable") + " for deliveries.",
+            "success"
+          );
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed to update status: " + err.message, "error");
+          this.checked = !this.checked;
+        }
+      });
+
+      window.getGeolocation = function () {
+        if (!navigator.geolocation) {
+          HarvConnectComponents.showToast("Geolocation is not supported by your browser.", "error");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            document.getElementById("latInput").value = pos.coords.latitude.toFixed(6);
+            document.getElementById("lngInput").value = pos.coords.longitude.toFixed(6);
+            HarvConnectComponents.showToast("GPS location captured!", "success");
+          },
+          function (err) {
+            HarvConnectComponents.showToast("Unable to get location: " + err.message, "error");
+          }
+        );
+      };
+
+      window.updateLocation = async function () {
+        var lat = parseFloat(document.getElementById("latInput").value);
+        var lng = parseFloat(document.getElementById("lngInput").value);
+        if (isNaN(lat) || isNaN(lng)) {
+          HarvConnectComponents.showToast("Please enter valid latitude and longitude.", "error");
+          return;
+        }
+        saveDriverToRegistry();
+        try {
+          var payload = {
+            latitude: lat,
+            longitude: lng,
+            available: document.getElementById("availToggle").checked,
+            currentAddress: document.getElementById("addressInput").value.trim(),
+            currentRegion: document.getElementById("regionInput").value,
+          };
+          await HarvConnectAPI.transport.updateStatus(payload);
+          HarvConnectComponents.showToast("Location updated successfully!", "success");
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed to update location: " + err.message, "error");
+        }
+      };
+
+      function renderDriverNotifs() {
+        var container = document.getElementById("driverNotifContent");
+        if (!container) return;
+        var notifs = HarvConnectNotifications.getDriverNotifications();
+        if (notifs.length === 0) {
+          container.innerHTML = '<div class="notif-empty" style="text-align:center;padding:40px 20px;">' +
+            '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>' +
+            "<h3 style='font-size:16px;margin:12px 0 4px;'>No delivery requests yet</h3>" +
+            "<p style='font-size:14px;color:var(--hc-text-gray);'>When a buyer selects you for delivery, it will appear here.</p>" +
+            "</div>";
+          return;
+        }
+        container.innerHTML = notifs.map(function (n) {
+          var timeAgo = "";
+          var diff = Date.now() - n.timestamp;
+          var mins = Math.floor(diff / 60000);
+          if (mins < 1) timeAgo = "Just now";
+          else if (mins < 60) timeAgo = mins + "m ago";
+          else if (mins < 1440) timeAgo = Math.floor(mins / 60) + "h ago";
+          else timeAgo = Math.floor(mins / 1440) + "d ago";
+
+          var farmerId = n.farmerId || "";
+          var farmerName = n.farmerName || "Farmer";
+          var chatFarmerBtn = farmerId ? '<button class="hc-btn hc-btn-outline hc-btn-sm" onclick="chatWithFarmer(\'' + farmerId + "','" + farmerName + "','" + n.orderId + "')\">Chat Farmer</button>" : "";
+          return (
+            '<div class="notif-card' + (n.read ? "" : " unread") + '" style="background:#fff;border:1px solid var(--hc-border);border-radius:var(--hc-radius-lg);padding:20px;margin-bottom:12px;">' +
+              '<div class="notif-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+                '<div class="notif-title" style="font-size:15px;font-weight:700;">Delivery Request #' + n.orderNumber + "</div>" +
+                '<div class="notif-time" style="font-size:12px;color:var(--hc-text-gray);">' + timeAgo + "</div>" +
+              "</div>" +
+              '<div style="font-size:13px;color:var(--hc-text-gray);margin-bottom:8px;">' +
+                "<strong>Buyer:</strong> " + n.buyerName + "<br>" +
+                "<strong>Product:</strong> " + n.productName + "<br>" +
+                "<strong>Pickup:</strong> " + n.pickupAddress + "<br>" +
+                "<strong>Delivery:</strong> " + n.deliveryAddress +
+              "</div>" +
+              '<div class="notif-message" style="font-size:14px;color:var(--hc-text);margin-bottom:12px;line-height:1.5;">' + n.message + "</div>" +
+              '<div class="notif-actions" style="display:flex;gap:10px;flex-wrap:wrap;">' +
+                '<button class="hc-btn hc-btn-primary hc-btn-sm" onclick="acceptDriverDelivery(\'' + (n.driverId || "") + "','" + n.orderId + "')\">Accept Delivery</button>" +
+                chatFarmerBtn +
+                '<button class="hc-btn hc-btn-ghost hc-btn-sm" onclick="dismissDriverNotif(\'' + (n.driverId || "") + "','" + n.orderId + "')\">Dismiss</button>" +
+              "</div>" +
+            "</div>"
+          );
+        }).join("");
+
+        notifs.forEach(function (n) {
+          var key = "hc_notif_driver_" + (n.driverId || "") + "_" + n.orderId;
+          HarvConnectNotifications.markDriverNotifAsRead(key);
+        });
+        HarvConnectComponents.updateNotifBadge();
+      }
+
+      async function loadActiveDeliveries() {
+        var container = document.getElementById("activeDeliveriesContent");
+        if (!container) return;
+        try {
+          var res = await HarvConnectAPI.orders.list();
+          var orders = res.data || [];
+          var active = orders.filter(function (o) {
+            return (o.status === "IN_TRANSIT" || o.status === "READY_FOR_TRANSPORT") && o.transporterId === user.id;
+          });
+          if (active.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:24px 20px;background:#fff;border:1px solid var(--hc-border);border-radius:var(--hc-radius-lg);">' +
+              '<p style="font-size:14px;color:var(--hc-text-gray);">No active deliveries right now.</p></div>';
+            return;
+          }
+          container.innerHTML = active.map(function (o) {
+            var pn = o.product ? o.product.name : "Product";
+            return '<div style="background:#fff;border:1px solid var(--hc-border);border-radius:var(--hc-radius-lg);padding:16px;margin-bottom:10px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+                '<div><strong>#' + (o.orderNumber || o.id.slice(0, 8)) + "</strong> &mdash; " + pn + " &times; " + (o.quantity || "") + "</div>" +
+                '<a href="tracking.html?id=' + o.id + '" class="hc-btn hc-btn-primary hc-btn-sm">' +
+                  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Live Tracking' +
+                "</a>" +
+              "</div>" +
+            "</div>";
+          }).join("");
+        } catch (e) {
+          container.innerHTML = '<div style="text-align:center;padding:24px 20px;"><p style="font-size:14px;color:var(--hc-text-gray);">Could not load deliveries.</p></div>';
+        }
+      }
+
+      window.chatWithFarmer = function (farmerId, farmerName, orderId) {
+        var user = HarvConnectAuth.getUser();
+        HarvConnectChat.getOrCreateChat({
+          participant1Id: user.id,
+          participant1Name: user.fullName || "Transporter",
+          participant1Role: "TRANSPORT",
+          participant2Id: farmerId,
+          participant2Name: farmerName,
+          participant2Role: "FARMER",
+          orderId: orderId || "",
+        });
+        window.location.href = "chat.html?chat=chat_" + HarvConnectChat.getChatId(user.id, farmerId);
+      };
+
+      window.acceptDriverDelivery = function (driverId, orderId) {
+        HarvConnectComponents.showToast("Delivery request accepted! Contact the buyer to arrange pickup.", "success");
+        var key = "hc_notif_driver_" + driverId + "_" + orderId;
+        HarvConnectNotifications.dismissDriverNotif(key);
+        var completed = (function () {
+          try { return parseInt(localStorage.getItem("hc_deliveries_completed") || "0", 10); } catch (e) { return 0; }
+        })();
+        localStorage.setItem("hc_deliveries_completed", String(completed + 1));
+        renderDriverNotifs();
+        updateStats();
+        updateGreeting();
+      };
+
+      window.dismissDriverNotif = function (driverId, orderId) {
+        var key = "hc_notif_driver_" + driverId + "_" + orderId;
+        HarvConnectNotifications.dismissDriverNotif(key);
+        renderDriverNotifs();
+        updateStats();
+        updateGreeting();
+      };
+
+      window.addEventListener("storage", function (e) {
+        if (e.key && (e.key.indexOf("hc_notif_driver_") === 0 || e.key === "hc_deliveries_completed")) {
+          renderDriverNotifs();
+          updateStats();
+          updateGreeting();
+          HarvConnectComponents.updateNotifBadge();
+        }
+      });
+
+      renderDriverNotifs();
+      loadActiveDeliveries();
+    })();
+  </script>
+</body>
+</html>

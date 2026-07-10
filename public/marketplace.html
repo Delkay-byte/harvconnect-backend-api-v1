@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marketplace - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/marketplace.css" />
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container">
+        <div class="page-header">
+          <h1 id="greetingText">Marketplace</h1>
+          <p id="greetingSub">Fresh produce from verified farmers across Ghana</p>
+        </div>
+
+        <div class="marketplace-toolbar">
+          <div class="marketplace-search">
+            <span class="marketplace-search-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
+            <input type="text" id="searchInput" placeholder="Search produce (e.g. tomato, pepper...)" />
+          </div>
+          <div class="marketplace-filters" id="filterChips"></div>
+          <div class="marketplace-farmer-filter">
+            <label for="farmerSelect">Farmer:</label>
+            <select id="farmerSelect">
+              <option value="">All Farmers</option>
+            </select>
+          </div>
+          <div class="marketplace-sort">
+            <label for="sortSelect">Sort:</label>
+            <select id="sortSelect">
+              <option value="newest">Newest</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+              <option value="name_asc">Name: A-Z</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="product-grid" id="productGrid"></div>
+        <div id="pagination"></div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("marketplace");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+
+      (function () {
+        var u = HarvConnectAuth.getUser();
+        if (u && u.fullName) {
+          document.getElementById("greetingText").textContent = HarvConnectUtils.getGreeting(u.fullName);
+          document.getElementById("greetingSub").textContent = "Browse fresh produce from verified farmers across Ghana";
+        }
+      })();
+
+      var currentPage = 1;
+      var currentCategory = "";
+      var currentSearch = "";
+      var currentSort = "newest";
+      var currentFarmer = "";
+      var grid = document.getElementById("productGrid");
+      var paginationEl = document.getElementById("pagination");
+      var farmerSelect = document.getElementById("farmerSelect");
+      var allLoadedProducts = [];
+
+      var categories = [
+        { value: "", label: "All" },
+        { value: "TOMATO_LOCAL", label: "Local Tomato" },
+        { value: "TOMATO_HYBRID", label: "Hybrid Tomato" },
+        { value: "PEPPER", label: "Pepper" },
+        { value: "OKRA", label: "Okra" },
+        { value: "GARDEN_EGGS", label: "Garden Eggs" },
+        { value: "CABBAGE", label: "Cabbage" },
+        { value: "LETTUCE", label: "Lettuce" },
+        { value: "CUCUMBER", label: "Cucumber" },
+        { value: "ONION", label: "Onion" },
+      ];
+
+      var chipsHtml = categories.map(function (c) {
+        return '<button class="filter-chip' + (c.value === "" ? " active" : "") + '" data-category="' + c.value + '">' + c.label + "</button>";
+      }).join("");
+      document.getElementById("filterChips").innerHTML = chipsHtml;
+
+      document.getElementById("filterChips").addEventListener("click", function (e) {
+        var chip = e.target.closest(".filter-chip");
+        if (!chip) return;
+        document.querySelectorAll(".filter-chip").forEach(function (c) { c.classList.remove("active"); });
+        chip.classList.add("active");
+        currentCategory = chip.dataset.category;
+        currentPage = 1;
+        renderFilteredProducts();
+      });
+
+      document.getElementById("searchInput").addEventListener("input", HarvConnectUtils.debounce(function () {
+        currentSearch = document.getElementById("searchInput").value.trim().toLowerCase();
+        currentPage = 1;
+        renderFilteredProducts();
+      }, 400));
+
+      document.getElementById("sortSelect").addEventListener("change", function () {
+        currentSort = this.value;
+        currentPage = 1;
+        renderFilteredProducts();
+      });
+
+      farmerSelect.addEventListener("change", function () {
+        currentFarmer = this.value;
+        currentPage = 1;
+        renderFilteredProducts();
+      });
+
+      window.goToPage = function (page) {
+        currentPage = page;
+        renderFilteredProducts();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      };
+
+      window.filterByFarmer = function (farmerName) {
+        currentFarmer = farmerName;
+        farmerSelect.value = farmerName;
+        currentPage = 1;
+        renderFilteredProducts();
+      };
+
+      function populateFarmerFilter(products) {
+        var farmerSet = {};
+        products.forEach(function (p) {
+          if (p.farmerName) farmerSet[p.farmerName] = true;
+        });
+        var farmerNames = Object.keys(farmerSet).sort();
+        farmerSelect.innerHTML = '<option value="">All Farmers</option>' + farmerNames.map(function (f) {
+          return '<option value="' + f.replace(/"/g, "&quot;") + '">' + f + "</option>";
+        }).join("");
+      }
+
+      function applyFilters(products) {
+        var filtered = products;
+        if (currentCategory) {
+          filtered = filtered.filter(function (p) { return p.category === currentCategory; });
+        }
+        if (currentFarmer) {
+          filtered = filtered.filter(function (p) { return p.farmerName === currentFarmer; });
+        }
+        if (currentSearch) {
+          filtered = filtered.filter(function (p) {
+            var name = (p.name || "").toLowerCase();
+            var cat = HarvConnectUtils.getCategoryLabel(p.category).toLowerCase();
+            var farmer = (p.farmerName || "").toLowerCase();
+            return name.indexOf(currentSearch) !== -1 || cat.indexOf(currentSearch) !== -1 || farmer.indexOf(currentSearch) !== -1;
+          });
+        }
+        filtered.sort(function (a, b) {
+          switch (currentSort) {
+            case "price_asc": return Number(a.price) - Number(b.price);
+            case "price_desc": return Number(b.price) - Number(a.price);
+            case "name_asc": return (a.name || "").localeCompare(b.name || "");
+            case "newest":
+            default: return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+          }
+        });
+        return filtered;
+      }
+
+      function renderFilteredProducts() {
+        var filtered = applyFilters(allLoadedProducts);
+        var perPage = 12;
+        var totalPages = Math.ceil(filtered.length / perPage);
+        if (currentPage > totalPages) currentPage = 1;
+        var start = (currentPage - 1) * perPage;
+        var pageItems = filtered.slice(start, start + perPage);
+
+        if (pageItems.length === 0) {
+          grid.innerHTML = HarvConnectComponents.renderEmptyState(
+            "No products found. Try adjusting your search or filters.",
+            '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+          );
+          paginationEl.innerHTML = "";
+          return;
+        }
+
+        grid.innerHTML = pageItems.map(function (p) {
+          var imgUrl = p.image || p.imageUrl;
+          return (
+            '<a href="product-detail.html?id=' + p.id + '" class="product-card">' +
+              '<div class="product-card-img">' +
+                (imgUrl
+                  ? '<img src="' + imgUrl + '" alt="' + (p.name || "") + '" loading="lazy" />'
+                  : '<div class="placeholder-icon">&#127807;</div>') +
+              "</div>" +
+              '<div class="product-card-body">' +
+                '<span class="product-card-category">' + HarvConnectUtils.getCategoryLabel(p.category) + "</span>" +
+                '<div class="product-card-name">' + (p.name || "") + "</div>" +
+                '<div class="product-card-farmer" onclick="event.preventDefault();event.stopPropagation();filterByFarmer(\'' + (p.farmerName || "").replace(/'/g, "\\'") + '\');">' + (p.farmerName || "Farmer") + "</div>" +
+                '<div class="product-card-price">' + HarvConnectUtils.formatCedis(p.price) + " / " + (p.unit || "") + "</div>" +
+                '<div class="product-card-location">&#128205; ' + (p.location || "Ghana") + "</div>" +
+              "</div>" +
+            "</a>"
+          );
+        }).join("");
+
+        var mockMeta = { currentPage: currentPage, totalPages: totalPages };
+        paginationEl.innerHTML = HarvConnectComponents.renderPagination(mockMeta, "goToPage");
+      }
+
+      async function loadProducts() {
+        grid.innerHTML = HarvConnectComponents.renderSkeletonCards(8);
+
+        try {
+          var res = await HarvConnectAPI.products.list({ limit: "200" });
+          allLoadedProducts = res.data.products || [];
+          populateFarmerFilter(allLoadedProducts);
+          renderFilteredProducts();
+        } catch (err) {
+          grid.innerHTML = HarvConnectComponents.renderErrorState(
+            "Failed to load products. Please try again.",
+            "loadProducts"
+          );
+          paginationEl.innerHTML = "";
+        }
+      }
+
+      loadProducts();
+    })();
+  </script>
+</body>
+</html>

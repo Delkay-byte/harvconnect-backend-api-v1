@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAQs - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <style>
+    .faq-item { background:#fff; border:1px solid var(--hc-border); border-radius:var(--hc-radius-lg); margin-bottom:12px; overflow:hidden; }
+    .faq-question { padding:16px 20px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; font-weight:600; font-size:15px; color:var(--hc-text); transition:background 0.2s; }
+    .faq-question:hover { background:#f8fafc; }
+    .faq-question .faq-arrow { transition:transform 0.3s; font-size:12px; color:var(--hc-text-gray); }
+    .faq-item.open .faq-arrow { transform:rotate(180deg); }
+    .faq-answer { padding:0 20px 16px; font-size:14px; color:var(--hc-text-gray); line-height:1.6; display:none; }
+    .faq-item.open .faq-answer { display:block; }
+
+    .chatbot-container { background:#fff; border:1px solid var(--hc-border); border-radius:var(--hc-radius-lg); overflow:hidden; margin-top:32px; }
+    .chatbot-header { background:var(--hc-green); color:#fff; padding:16px 20px; display:flex; align-items:center; gap:12px; }
+    .chatbot-header-avatar { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .chatbot-header-info h3 { font-size:16px; font-weight:700; margin-bottom:1px; }
+    .chatbot-header-info span { font-size:12px; opacity:0.85; }
+    .chatbot-messages { height:360px; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+    .chat-msg { max-width:80%; padding:10px 14px; border-radius:12px; font-size:14px; line-height:1.5; }
+    .chat-msg.bot { background:var(--hc-green-bg); color:var(--hc-text); align-self:flex-start; border-bottom-left-radius:4px; }
+    .chat-msg.user { background:var(--hc-green); color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+    .chat-msg.bot strong { color:var(--hc-green); }
+    .chatbot-input-area { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--hc-border); }
+    .chatbot-input-area input { flex:1; padding:10px 14px; border:1.5px solid var(--hc-border); border-radius:var(--hc-radius); font-size:14px; font-family:var(--hc-font); }
+    .chatbot-input-area input:focus { outline:none; border-color:var(--hc-green); }
+    .chatbot-input-area button { background:var(--hc-green); color:#fff; border:none; padding:10px 20px; border-radius:var(--hc-radius); font-weight:600; cursor:pointer; font-size:14px; }
+    .chatbot-input-area button:hover { background:var(--hc-green-hover); }
+    .quick-replies { display:flex; flex-wrap:wrap; gap:6px; padding:0 16px 12px; }
+    .quick-reply-btn { background:var(--hc-green-light); color:var(--hc-green); border:1px solid var(--hc-green); padding:6px 12px; border-radius:16px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .quick-reply-btn:hover { background:var(--hc-green); color:#fff; }
+  </style>
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container" style="max-width:800px;">
+        <div class="page-header">
+          <h1>Frequently Asked Questions</h1>
+          <p>Find answers to common questions about HarvConnect</p>
+        </div>
+
+        <div id="faqList">
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">What is HarvConnect?<span class="faq-arrow">&#9660;</span></div>
+            <div class="faq-answer">HarvConnect is a digital marketplace that connects Ghanaian smallholder farmers directly with buyers. Farmers can list their fresh produce, and buyers can browse, order, and have it delivered via registered transporters.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">How do I sign up?<span class="faq-arrow">&#9660;</span></div>
+            <div class="faq-answer">Click the "Get Started" button on any page. You can register as a Farmer (to sell produce), a Buyer (to purchase produce), or a Transporter (to deliver orders). Fill in your details and you're ready to go!</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">How do I list products as a farmer?<span class="faq-arrow">&#9660;</span></div>
+            <div class="faq-answer">After logging in as a farmer, go to "My Products" in the navigation menu. Click "+ Add New Product", fill in the details (name, category, price, quantity, unit), optionally upload an image, and click "Add Product".</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">How does ordering work?<span class="faq-arrow">&#9660;</span></div>
+            <div class="faq-answer">As a buyer, browse the Marketplace, click on a product, select your quantity, and click "Add to Cart". When ready, go to your Cart, enter your delivery address and Mobile Money payment details, then click "Place Order & Pay".</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">What payment methods are accepted?<span class="faq-arrow">&#9660;</span></div>
+            <div class="faq-answer">We currently accept Mobile Money payments through MTN, Vodafone Cash, and AirtelTigo Money. Simply enter your phone number and select your network at checkout.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">How is delivery arranged?<span class="faq-arrow">&#9660;</span></div>
+            <div class="faq-answer">Once a farmer accepts your order and marks it "Ready for Transport", our system matches the nearest available registered transporter based on proximity. The transporter delivers the produce to your specified address.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">Can I change my password?<span class="faq-arrow">&#9660;</span></div>
+            <div class="faq-answer">Yes! Go to your Profile page and scroll to the "Change Password" section. Enter your current password to verify your identity, then enter your new password. A reset link will be sent to your email.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">How do I become a transporter?<span class="faq-arrow">&#9660;</span></div>
+            <div class="faq-answer">Click "Join as Transporter" in the footer and register with your vehicle type and capacity. Once registered, you can update your location from the Transport Dashboard and become available for deliveries in your area.</div>
+          </div>
+        </div>
+
+        <div class="chatbot-container">
+          <div class="chatbot-header">
+            <div class="chatbot-header-avatar">&#129302;</div>
+            <div class="chatbot-header-info">
+              <h3>HarvBot</h3>
+              <span>Ask me anything about HarvConnect</span>
+            </div>
+          </div>
+          <div class="chatbot-messages" id="chatMessages">
+            <div class="chat-msg bot">Hi there! I'm <strong>HarvBot</strong>, your virtual assistant. Ask me anything about HarvConnect - how to register, place orders, list products, make payments, or anything else!</div>
+          </div>
+          <div class="quick-replies" id="quickReplies">
+            <button class="quick-reply-btn" onclick="sendQuick('How do I register?')">How to register</button>
+            <button class="quick-reply-btn" onclick="sendQuick('How do I place an order?')">Place an order</button>
+            <button class="quick-reply-btn" onclick="sendQuick('How do I list products?')">List products</button>
+            <button class="quick-reply-btn" onclick="sendQuick('What payment methods?')">Payment methods</button>
+            <button class="quick-reply-btn" onclick="sendQuick('How does delivery work?')">Delivery info</button>
+          </div>
+          <div class="chatbot-input-area">
+            <input type="text" id="chatInput" placeholder="Type your question..." onkeydown="if(event.key==='Enter')sendChat()" />
+            <button onclick="sendChat()">Send</button>
+          </div>
+        </div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+    })();
+
+    window.toggleFaq = function (el) {
+      var item = el.parentElement;
+      var wasOpen = item.classList.contains("open");
+      document.querySelectorAll(".faq-item").forEach(function (fi) { fi.classList.remove("open"); });
+      if (!wasOpen) item.classList.add("open");
+    };
+
+    var chatKnowledge = [
+      { keywords: ["register", "sign up", "signup", "create account", "join"], answer: "To register, click 'Get Started' on any page. Choose your role (Farmer, Buyer, or Transporter), fill in your full name, email, phone, and password. You must use a strong password with at least 8 characters, one uppercase, one lowercase, one number, and one special character." },
+      { keywords: ["login", "sign in", "signin", "log in"], answer: "Click 'Login' in the navigation bar. Enter your registered email and password. If you forgot your password, use the 'Forgot Password' link on the login page." },
+      { keywords: ["order", "buy", "purchase", "cart", "checkout"], answer: "As a buyer, browse the Marketplace, click a product, select quantity, and click 'Add to Cart'. Go to your Cart, enter your delivery address and Mobile Money details, then click 'Place Order & Pay'." },
+      { keywords: ["product", "list", "sell", "farmer", "add product"], answer: "Farmers can list products from 'My Products' dashboard. Click '+ Add New Product', enter product name, category, price per unit, quantity, unit, description, and optionally upload an image." },
+      { keywords: ["payment", "momo", "mobile money", "pay"], answer: "We accept Mobile Money payments via MTN, Vodafone Cash, and AirtelTigo Money. Enter your phone number at checkout and select your network." },
+      { keywords: ["delivery", "transport", "driver", "ship"], answer: "After a farmer accepts your order and marks it 'Ready for Transport', the system matches the nearest available transporter based on their live location. The transporter then delivers to your address." },
+      { keywords: ["password", "reset", "change password", "forgot"], answer: "Go to your Profile page, scroll to 'Change Password'. Enter your current password to verify, then your new password. A reset link will be sent to your email to complete the change." },
+      { keywords: ["price", "cost", "expensive", "cheap", "afford"], answer: "Prices are set by individual farmers and vary by produce type, quality, and season. Browse the Marketplace and sort by price to find the best deals for you." },
+      { keywords: ["account", "profile", "edit", "update"], answer: "Go to your Profile page and click 'Edit Profile'. You can update your farm name, bio, address, and location coordinates. Click 'Save Changes' when done." },
+      { keywords: ["delete", "remove account"], answer: "On your Profile page, scroll to 'Danger Zone' and click 'Delete Account'. This will permanently remove all your data and cannot be undone." },
+      { keywords: ["transporter", "driver register", "vehicle"], answer: "To become a transporter, click 'Join as Transporter' in the footer and register. You'll need to provide your vehicle type (Motorbike, Tricycle, Pickup, Mini Truck, or Truck) and carrying capacity." },
+      { keywords: ["available", "unavailable", "toggle"], answer: "As a transporter, use the toggle on your Transport Dashboard to mark yourself as available or unavailable for deliveries. Update your location regularly to receive nearby orders." },
+      { keywords: ["location", "gps", "map", "coordinate"], answer: "You can update your location manually by entering your address, region, latitude, and longitude on the Transport Dashboard. Or click 'Use My GPS Location' to auto-detect your position." },
+      { keywords: ["review", "rating", "feedback"], answer: "After an order is delivered, buyers can leave a review and rating for the farmer. This helps other buyers make informed decisions." },
+      { keywords: ["hello", "hi", "hey", "good morning", "good afternoon"], answer: "Hello! Welcome to HarvConnect. How can I help you today? You can ask me about registration, ordering, selling products, payments, delivery, or anything else about the platform." },
+      { keywords: ["thank", "thanks"], answer: "You're welcome! Is there anything else I can help you with?" },
+      { keywords: ["help", "support", "contact"], answer: "You can reach our support team via email at support@harvconnect.com or call our Help Center at +233 500 000 000. You can also check the FAQs above for quick answers!" },
+      { keywords: ["harvconnect", "about", "what is"], answer: "HarvConnect is a Farmer-to-Buyer Digital Marketplace Platform connecting Ghana's smallholder farmers directly to buyers. We ensure fair prices, fresh produce, and reliable delivery through registered transporters." }
+    ];
+
+    var defaultAnswer = "I'm not sure I understand that question. Try rephrasing it, or ask about topics like: registration, ordering, payments, delivery, product listing, password reset, or account management. You can also check the FAQs above for more details!";
+
+    function getAnswer(question) {
+      var q = question.toLowerCase();
+      var bestMatch = null;
+      var bestScore = 0;
+      for (var i = 0; i < chatKnowledge.length; i++) {
+        var entry = chatKnowledge[i];
+        var score = 0;
+        for (var j = 0; j < entry.keywords.length; j++) {
+          if (q.indexOf(entry.keywords[j]) !== -1) {
+            score += entry.keywords[j].length;
+          }
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = entry;
+        }
+      }
+      return bestScore > 0 ? bestMatch.answer : defaultAnswer;
+    }
+
+    function addMessage(text, type) {
+      var container = document.getElementById("chatMessages");
+      var msg = document.createElement("div");
+      msg.className = "chat-msg " + type;
+      msg.innerHTML = text;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    window.sendChat = function () {
+      var input = document.getElementById("chatInput");
+      var text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      addMessage(text, "user");
+      setTimeout(function () {
+        var answer = getAnswer(text);
+        addMessage(answer, "bot");
+      }, 400);
+    };
+
+    window.sendQuick = function (text) {
+      addMessage(text, "user");
+      setTimeout(function () {
+        var answer = getAnswer(text);
+        addMessage(answer, "bot");
+      }, 400);
+    };
+  </script>
+</body>
+</html>

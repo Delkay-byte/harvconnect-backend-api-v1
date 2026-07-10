@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Farmer Orders - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/cart.css" />
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container">
+        <div class="page-header">
+          <h1>Farmer Orders</h1>
+          <p>Manage incoming orders from buyers</p>
+        </div>
+        <div class="status-tabs" id="statusTabs"></div>
+        <div id="ordersContent"></div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("orders");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+
+      if (!HarvConnectAuth.requireAuth() || !HarvConnectAuth.requireRole("FARMER")) return;
+
+      var content = document.getElementById("ordersContent");
+      var allOrders = [];
+      var currentFilter = "ALL";
+
+      var statuses = ["ALL", "PENDING", "ACCEPTED", "READY_FOR_TRANSPORT", "IN_TRANSIT", "DELIVERED"];
+      document.getElementById("statusTabs").innerHTML = statuses.map(function (s) {
+        var label = s === "ALL" ? "All" : HarvConnectUtils.getStatusLabel(s);
+        return '<button class="status-tab' + (s === "ALL" ? " active" : "") + '" data-status="' + s + '">' + label + "</button>";
+      }).join("");
+
+      document.getElementById("statusTabs").addEventListener("click", function (e) {
+        var tab = e.target.closest(".status-tab");
+        if (!tab) return;
+        document.querySelectorAll(".status-tab").forEach(function (t) { t.classList.remove("active"); });
+        tab.classList.add("active");
+        currentFilter = tab.dataset.status;
+        renderOrders();
+      });
+
+      async function loadOrders() {
+        content.innerHTML = HarvConnectComponents.renderSkeletonCards(3);
+        try {
+          var res = await HarvConnectAPI.orders.list();
+          allOrders = res.data || [];
+          renderOrders();
+        } catch (err) {
+          content.innerHTML = HarvConnectComponents.renderErrorState("Failed to load orders.", "loadOrders");
+        }
+      }
+
+      function renderOrders() {
+        var filtered = currentFilter === "ALL"
+          ? allOrders
+          : allOrders.filter(function (o) { return o.status === currentFilter; });
+
+        if (filtered.length === 0) {
+          content.innerHTML = HarvConnectComponents.renderEmptyState("No orders found for this filter.");
+          return;
+        }
+
+        content.innerHTML = '<div class="orders-list">' + filtered.map(function (o) {
+          var statusColor = HarvConnectUtils.getStatusColor(o.status);
+          var statusLabel = HarvConnectUtils.getStatusLabel(o.status);
+          var actionsHtml = "";
+
+          if (o.status === "PENDING") {
+            actionsHtml =
+              '<button class="hc-btn hc-btn-primary hc-btn-sm" onclick="updateStatus(\'' + o.id + "','ACCEPTED')\">Accept</button>" +
+              '<button class="hc-btn hc-btn-danger hc-btn-sm" onclick="updateStatus(\'' + o.id + "','REJECTED')\">Reject</button>";
+          } else if (o.status === "ACCEPTED") {
+            actionsHtml = '<button class="hc-btn hc-btn-primary hc-btn-sm" onclick="readyForTransport(\'' + o.id + "')\">Ready for Transport</button>";
+          }
+
+          var productName = o.product ? o.product.name : (o.productName || "Product");
+          var buyerName = o.buyer ? o.buyer.fullName : (o.buyerName || "Buyer");
+          var buyerId = o.buyer ? o.buyer.id : (o.buyerId || "");
+          var chatBtn = buyerId ? '<button class="hc-btn hc-btn-outline hc-btn-sm" onclick="openOrderChat(\'' + o.id + "','" + buyerId + "','" + buyerName + "')\">Chat Buyer</button>" : "";
+          var trackBtn = (o.status === "IN_TRANSIT" || o.status === "DELIVERED")
+            ? '<a href="tracking.html?id=' + o.id + '" class="hc-btn hc-btn-outline hc-btn-sm">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Track' +
+              "</a>"
+            : "";
+
+          return (
+            '<div class="order-card">' +
+              '<div class="order-card-header">' +
+                '<div>' +
+                  '<div class="order-number">Order #' + (o.orderNumber || o.id.slice(0, 8)) + "</div>" +
+                  '<div class="order-date">Buyer: ' + buyerName + " &bull; " + HarvConnectUtils.formatDateTime(o.createdAt) + "</div>" +
+                "</div>" +
+                '<span class="hc-badge" style="background:' + statusColor + '20;color:' + statusColor + ';">' +
+                  '<span class="hc-status-dot" style="background:' + statusColor + ';"></span>' +
+                  statusLabel +
+                "</span>" +
+              "</div>" +
+              '<div class="order-card-items">' +
+                '<div class="order-card-item"><span>' + productName + " &times; " + o.quantity + "</span><span>" + HarvConnectUtils.formatCedis(o.totalPrice) + "</span></div>" +
+                '<div class="order-card-item"><span>Delivery:</span><span>' + (o.deliveryAddress || "N/A") + "</span></div>" +
+              "</div>" +
+              '<div class="order-card-footer">' +
+                '<div class="order-total">' + HarvConnectUtils.formatCedis(o.totalPrice) + "</div>" +
+                '<div class="hc-flex hc-gap-8">' + trackBtn + chatBtn + actionsHtml + "</div>" +
+              "</div>" +
+            "</div>"
+          );
+        }).join("") + "</div>";
+      }
+
+      window.openOrderChat = function (orderId, otherUserId, otherName) {
+        var user = HarvConnectAuth.getUser();
+        if (!user) return;
+        var otherRole = otherUserId === user.id ? user.role : (orderId ? "BUYER" : "");
+        HarvConnectChat.getOrCreateChat({
+          participant1Id: user.id,
+          participant1Name: user.fullName || "Me",
+          participant1Role: user.role,
+          participant2Id: otherUserId,
+          participant2Name: otherName || "User",
+          participant2Role: otherRole || "BUYER",
+          orderId: orderId || "",
+        });
+        window.location.href = "chat.html?chat=chat_" + HarvConnectChat.getChatId(user.id, otherUserId);
+      };
+
+      window.updateStatus = async function (orderId, status) {
+        try {
+          await HarvConnectAPI.orders.updateStatus(orderId, status);
+          if (status === "ACCEPTED") {
+            var order = allOrders.find(function (o) { return o.id === orderId; });
+            if (order) {
+              HarvConnectNotifications.createNotification(orderId, {
+                orderNumber: order.orderNumber || orderId.slice(0, 8),
+                productName: order.product ? order.product.name : (order.productName || "Product"),
+                buyerId: order.buyerId || "",
+                farmerId: order.farmerId || "",
+                buyerName: order.buyer ? order.buyer.fullName : (order.buyerName || "Buyer"),
+                farmerName: order.farmer ? order.farmer.fullName : "Farmer",
+                status: "ACCEPTED",
+                message: "Your order has been accepted by " + (order.farmer ? order.farmer.fullName : "the farmer") + " and is being prepared.",
+              });
+              HarvConnectComponents.updateNotifBadge();
+              // Auto-create chat between farmer and buyer
+              var user = HarvConnectAuth.getUser();
+              if (user && order.buyer) {
+                HarvConnectChat.getOrCreateChat({
+                  participant1Id: user.id,
+                  participant1Name: user.fullName || "Farmer",
+                  participant1Role: user.role,
+                  participant2Id: order.buyer.id || order.buyerId,
+                  participant2Name: order.buyer.fullName || (order.buyerName || "Buyer"),
+                  participant2Role: "BUYER",
+                  orderId: order.id,
+                });
+                HarvConnectComponents.updateChatBadge();
+              }
+            }
+          }
+          HarvConnectComponents.showToast("Order updated to " + HarvConnectUtils.getStatusLabel(status), "success");
+          loadOrders();
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed: " + err.message, "error");
+        }
+      };
+
+      window.readyForTransport = async function (orderId) {
+        try {
+          await HarvConnectAPI.orders.updateStatus(orderId, "READY_FOR_TRANSPORT");
+          HarvConnectComponents.showToast("Order marked Ready for Transport!", "success");
+          sessionStorage.setItem("hc_last_order_for_transport", orderId);
+          setTimeout(function () {
+            window.location.href = "drivers.html?orderId=" + orderId;
+          }, 800);
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed: " + err.message, "error");
+        }
+      };
+
+      loadOrders();
+
+      (function () {
+        var u = HarvConnectAuth.getUser();
+        if (u && u.id) {
+          var notifs = HarvConnectNotifications.getFarmerNotifications(u.id);
+          notifs.forEach(function (n) {
+            HarvConnectNotifications.markFarmerNotifAsRead(u.id, n.orderId);
+          });
+        }
+        HarvConnectComponents.updateFarmerOrdersBadge();
+      })();
+    })();
+  </script>
+</body>
+</html>

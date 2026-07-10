@@ -13,6 +13,8 @@ const {
 const {
   validateRegister,
   validateLogin,
+  validateForgotPassword,
+  validateResetPassword,
 } = require("../validators/auth.validator");
 const authMiddleware = require("../middleware/auth.middleware");
 
@@ -36,7 +38,7 @@ router.delete("/delete", authMiddleware, deactivateAccount);
 router.get("/verify-email", verifyEmail);
 router.post("/verify-email", verifyEmail);
 router.post("/resend-verification", resendVerification);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
+router.post("/forgot-password", validateForgotPassword, forgotPassword);
+router.post("/reset-password", validateResetPassword, resetPassword);
 
 module.exports = router;

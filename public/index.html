@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HarvConnect - Ghana's Fresh Produce Marketplace</title>
+  <meta name="description" content="Connect directly with smallholder farmers for fresh vegetables. Fair prices, reliable delivery across Ghana." />
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <style>
+    .fade-in { opacity:0; transform:translateY(24px); transition:opacity 0.6s ease, transform 0.6s ease; }
+    .fade-in.visible { opacity:1; transform:translateY(0); }
+    .fade-in-delay-1 { transition-delay:0.1s; }
+    .fade-in-delay-2 { transition-delay:0.2s; }
+    .fade-in-delay-3 { transition-delay:0.3s; }
+
+    .hero-section::after { content:""; position:absolute; bottom:0; left:0; right:0; height:80px; background:linear-gradient(transparent,var(--bg-main)); pointer-events:none; }
+    .hero-stats-row { display:flex; gap:24px; justify-content:center; margin-top:32px; flex-wrap:wrap; }
+    .hero-stat { text-align:center; }
+    .hero-stat-num { font-size:28px; font-weight:800; }
+    .hero-stat-label { font-size:12px; opacity:0.8; }
+
+    .faq-section { background:#fff; border-bottom:1px solid var(--border-color); }
+    .faq-list { max-width:720px; margin:0 auto; display:flex; flex-direction:column; gap:8px; }
+    .faq-item { border:1px solid var(--border-color); border-radius:12px; overflow:hidden; }
+    .faq-question { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 20px; background:none; border:none; font-size:15px; font-weight:600; cursor:pointer; text-align:left; font-family:var(--font-family); color:var(--text-dark); transition:background 0.2s; }
+    .faq-question:hover { background:var(--primary-light); }
+    .faq-question svg { flex-shrink:0; transition:transform 0.3s; }
+    .faq-item.open .faq-question svg { transform:rotate(180deg); }
+    .faq-answer { max-height:0; overflow:hidden; transition:max-height 0.3s ease, padding 0.3s ease; }
+    .faq-answer-inner { padding:0 20px 16px; font-size:14px; color:var(--text-gray); line-height:1.6; }
+
+    .btn-hero-secondary { background-color:transparent; color:#fff; text-decoration:none; padding:16px 32px; border-radius:8px; font-weight:600; font-size:16px; border:1.5px solid rgba(255,255,255,0.6); transition:all 0.2s; display:inline-flex; align-items:center; gap:8px; }
+    .btn-hero-secondary:hover { background-color:rgba(255,255,255,0.12); border-color:#fff; }
+
+    .stats-banner { background:var(--primary-green); padding:40px 0; color:#fff; text-align:center; }
+    .stats-grid-inner { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:24px; max-width:900px; margin:0 auto; padding:0 24px; }
+    .stat-item .num { font-size:36px; font-weight:800; line-height:1; }
+    .stat-item .lbl { font-size:13px; opacity:0.85; margin-top:6px; }
+
+    .mobile-link.highlight { background-color:var(--primary-green); color:#fff; padding:12px; border-radius:8px; text-align:center; }
+
+    .btn-hero-primary { background-color:var(--primary-green); color:#fff; text-decoration:none; padding:16px 32px; border-radius:8px; font-weight:600; font-size:16px; display:inline-flex; align-items:center; gap:8px; transition:background-color 0.2s; }
+    .btn-hero-primary:hover { background-color:var(--primary-hover); }
+
+    @media (max-width:768px) {
+      .hero-stats-row { gap:16px; }
+      .hero-stat-num { font-size:22px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-container">
+      <div class="logo-area">
+        <img src="images/HarvConnect-logo.png" alt="HarvConnect" class="brand-logo" />
+      </div>
+      <nav class="desktop-nav" id="desktopNav"></nav>
+      <div class="cta-group">
+        <a href="register.html" class="btn-nav-get-started" id="ctaBtn">Get Started</a>
+        <button class="menu-toggle-btn" onclick="toggleMobile()" aria-label="Toggle menu">&#9776;</button>
+      </div>
+    </div>
+    <nav class="mobile-nav-menu" id="mobileNav"></nav>
+  </header>
+
+  <section class="hero-section">
+    <div class="hero-content-container">
+      <h1 class="hero-headline">Fresh Produce, Direct from Farm to You</h1>
+      <p class="hero-subtext">
+        Ghana loses up to 50% of vegetables after harvest. HarvConnect connects smallholder
+        farmers directly to buyers, ensuring fair prices and fresh delivery.
+      </p>
+      <div class="hero-action-buttons">
+        <a href="register.html" class="btn-hero-primary">
+          Start Trading
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="#how-it-works" class="btn-hero-secondary">How It Works</a>
+      </div>
+      <div class="hero-stats-row">
+        <div class="hero-stat"><div class="hero-stat-num">500+</div><div class="hero-stat-label">Registered Farmers</div></div>
+        <div class="hero-stat"><div class="hero-stat-num">50+</div><div class="hero-stat-label">Communities Served</div></div>
+        <div class="hero-stat"><div class="hero-stat-num">GH₵10K+</div><div class="hero-stat-label">Farmer Earnings</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="problem-section" id="problems">
+    <div class="section-container">
+      <span class="section-tagline">THE CHALLENGE</span>
+      <h2 class="section-title">Why Farmers and Buyers Struggle</h2>
+      <p class="section-desc">
+        Smallholder farmers grow quality produce but lose income due to broken supply chains.
+      </p>
+      <div class="problem-grid">
+        <div class="problem-card fade-in">
+          <h3>&#127793; Farmers Face</h3>
+          <ul>
+            <li><span class="icon-danger">&#10060;</span>No reliable market access</li>
+            <li><span class="icon-danger">&#10060;</span>Unfair middleman pricing</li>
+            <li><span class="icon-danger">&#10060;</span>20-50% post-harvest losses</li>
+            <li><span class="icon-danger">&#10060;</span>Poor transport coordination</li>
+          </ul>
+        </div>
+        <div class="problem-card fade-in fade-in-delay-1">
+          <h3>&#128722; Buyers Face</h3>
+          <ul>
+            <li><span class="icon-danger">&#10060;</span>Difficulty finding trusted suppliers</li>
+            <li><span class="icon-danger">&#10060;</span>Price inconsistency across markets</li>
+            <li><span class="icon-danger">&#10060;</span>Unreliable delivery schedules</li>
+            <li><span class="icon-danger">&#10060;</span>No quality guarantees</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="how-it-works-section" id="how-it-works">
+    <div class="section-container">
+      <span class="section-tagline">HOW IT WORKS</span>
+      <h2 class="section-title">Three Simple Steps</h2>
+      <p class="section-desc">
+        Get started with HarvConnect in minutes. No complicated setup required.
+      </p>
+      <div class="steps-container">
+        <div class="step-card fade-in">
+          <div class="step-number">1</div>
+          <div class="step-body">
+            <h3>Create Your Account</h3>
+            <p>Sign up as a farmer, buyer, or transport provider. It takes less than a minute.</p>
+          </div>
+        </div>
+        <div class="step-card fade-in fade-in-delay-1">
+          <div class="step-number">2</div>
+          <div class="step-body">
+            <h3>List or Browse Produce</h3>
+            <p>Farmers upload their harvest. Buyers search by category, price, and location.</p>
+          </div>
+        </div>
+        <div class="step-card fade-in fade-in-delay-2">
+          <div class="step-number">3</div>
+          <div class="step-body">
+            <h3>Order and Deliver</h3>
+            <p>Buyers place orders, pay via Mobile Money. Transporters handle pickup and delivery.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="stats-banner">
+    <div class="stats-grid-inner">
+      <div class="stat-item"><div class="num">500+</div><div class="lbl">Farmers Onboarded</div></div>
+      <div class="stat-item"><div class="num">50+</div><div class="lbl">Communities</div></div>
+      <div class="stat-item"><div class="num">1,200+</div><div class="lbl">Orders Fulfilled</div></div>
+      <div class="stat-item"><div class="num">GH₵10K+</div><div class="lbl">Farmer Earnings</div></div>
+    </div>
+  </div>
+
+  <section class="section-container" id="roles" style="background:#fff;border-bottom:1px solid var(--border-color);">
+    <div class="section-container" style="padding:0;">
+      <span class="section-tagline">WHO IS IT FOR</span>
+      <h2 class="section-title">Built for Ghana's Agricultural Ecosystem</h2>
+      <p class="section-desc">Whether you grow, buy, or deliver, HarvConnect has a place for you.</p>
+      <div class="roles-grid">
+        <div class="role-action-card fade-in">
+          <div class="role-icon-box">&#127807;</div>
+          <h3>For Farmers</h3>
+          <p class="role-pitch">Sell your produce directly to buyers at fair prices. No middlemen.</p>
+          <ul class="role-checks">
+            <li><span class="icon-success">&#10003;</span>List produce with photos and pricing</li>
+            <li><span class="icon-success">&#10003;</span>Receive orders in real time</li>
+            <li><span class="icon-success">&#10003;</span>Track your sales and earnings</li>
+            <li><span class="icon-success">&#10003;</span>Build your farm reputation</li>
+          </ul>
+          <a href="register.html" class="btn-role-onboard">Join as Farmer &#8594;</a>
+        </div>
+        <div class="role-action-card fade-in fade-in-delay-1">
+          <div class="role-icon-box">&#128722;</div>
+          <h3>For Buyers</h3>
+          <p class="role-pitch">Source fresh produce directly from verified farmers near you.</p>
+          <ul class="role-checks">
+            <li><span class="icon-success">&#10003;</span>Browse fresh produce by category</li>
+            <li><span class="icon-success">&#10003;</span>Compare prices from multiple farmers</li>
+            <li><span class="icon-success">&#10003;</span>Pay securely via Mobile Money</li>
+            <li><span class="icon-success">&#10003;</span>Get reliable delivery</li>
+          </ul>
+          <a href="register.html" class="btn-role-onboard">Join as Buyer &#8594;</a>
+        </div>
+        <div class="role-action-card fade-in fade-in-delay-2">
+          <div class="role-icon-box">&#128666;</div>
+          <h3>For Transporters</h3>
+          <p class="role-pitch">Find delivery jobs near you and grow your transport business.</p>
+          <ul class="role-checks">
+            <li><span class="icon-success">&#10003;</span>Get matched with nearby deliveries</li>
+            <li><span class="icon-success">&#10003;</span>Update your availability in real time</li>
+            <li><span class="icon-success">&#10003;</span>Build your delivery reputation</li>
+            <li><span class="icon-success">&#10003;</span>Earn on your own schedule</li>
+          </ul>
+          <a href="register.html" class="btn-role-onboard">Join as Transporter &#8594;</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="live-marketplace-section" id="marketplace-preview">
+    <div class="section-container-new">
+      <span class="tagline-green-new">LIVE MARKETPLACE</span>
+      <h2 class="title-dark-new">Fresh Produce Available Now</h2>
+      <p class="desc-dark-new">Real listings from verified farmers across Ghana.</p>
+      <div class="produce-grid-new" id="marketplaceGrid"></div>
+      <div class="hc-text-center hc-mt-24">
+
+      </div>
+    </div>
+  </section>
+
+  <section class="from-farmers-section">
+    <div class="section-container-new">
+      <span class="tagline-gold-new">TRUSTED BY FARMERS</span>
+      <h2 class="title-white-new">What Our Farmers Say</h2>
+      <div class="testimonials-stack-new" id="testimonialsStack">
+        <div class="farmer-review-card-new fade-in">
+          <div class="review-stars-new">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+          <p class="review-text-new">"HarvConnect changed everything for my farm. I now sell directly to buyers in Accra without middlemen taking half my earnings."</p>
+          <div class="farmer-profile-new">
+            <div class="farmer-avatar-new color-a">KM</div>
+            <div class="farmer-meta-new">
+              <h4>Kwame Mensah</h4>
+              <span>Tomato Farmer, Volta Region</span>
+            </div>
+          </div>
+        </div>
+        <div class="farmer-review-card-new fade-in fade-in-delay-1">
+          <div class="review-stars-new">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+          <p class="review-text-new">"The delivery coordination is seamless. My produce reaches buyers fresh every time. No more post-harvest losses."</p>
+          <div class="farmer-profile-new">
+            <div class="farmer-avatar-new color-b">AS</div>
+            <div class="farmer-meta-new">
+              <h4>Ama Serwaa</h4>
+              <span>Pepper Farmer, Ashanti Region</span>
+            </div>
+          </div>
+        </div>
+        <div class="farmer-review-card-new fade-in fade-in-delay-2">
+          <div class="review-stars-new">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
+          <p class="review-text-new">"I get fair prices for my garden eggs and okra. The platform is easy to use even on my phone."</p>
+          <div class="farmer-profile-new">
+            <div class="farmer-avatar-new color-a">KA</div>
+            <div class="farmer-meta-new">
+              <h4>Kofi Asante</h4>
+              <span>Vegetable Farmer, Greater Accra</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq-section" id="faq">
+    <div class="section-container">
+      <span class="section-tagline">FAQ</span>
+      <h2 class="section-title">Frequently Asked Questions</h2>
+      <p class="section-desc">Quick answers to common questions about HarvConnect.</p>
+      <div class="faq-list" id="faqList">
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            How do I create an account?
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">Click the "Get Started" or "Start Trading" button and choose your role — Farmer, Buyer, or Transporter. Fill in your details and you're ready to go. It takes less than 2 minutes.</div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            Is HarvConnect free to use?
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">Yes! Registration and browsing the marketplace are completely free. Farmers only pay a small commission on successful sales, and buyers pay a nominal delivery fee to transporters.</div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            How do payments work?
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">Payments are processed securely via Mobile Money (MTN, Vodafone, AirtelTigo). Buyers pay when placing an order, and farmers receive payments directly to their MoMo wallet.</div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            How is delivery handled?
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">HarvConnect connects you with verified transporters in your area. After placing an order, you can select a driver based on distance, vehicle type, and price. The transporter picks up the produce from the farm and delivers it to you.</div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            Can I be both a farmer and a buyer?
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">Yes! You can register for multiple roles. For example, if you're a farmer who also wants to buy produce from other farmers, you can sign up for both the Farmer and Buyer roles.</div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            What if I have an issue with my order?
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">You can chat directly with the farmer or transporter through our inbuilt messaging system. For further assistance, contact our support team via phone, email, or WhatsApp — details are in the "Need Help" section below.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="active-helpline-section">
+    <div class="section-container-new">
+      <span class="tagline-green-new">NEED HELP?</span>
+      <h2 class="title-dark-new">We're Here for You</h2>
+      <div class="helpline-stack-new">
+        <div class="helpline-card-new">
+          <div class="helpline-icon-wrap-new">&#128222;</div>
+          <div class="helpline-details-new">
+            <h3>Call Us</h3>
+            <p class="helpline-sub-text">Mon - Fri, 8am - 5pm</p>
+            <a href="tel:+233500000000" class="helpline-link-new">+233 500 000 000</a>
+          </div>
+        </div>
+        <div class="helpline-card-new">
+          <div class="helpline-icon-wrap-new">&#9993;</div>
+          <div class="helpline-details-new">
+            <h3>Email Support</h3>
+            <p class="helpline-sub-text">Response within 24 hours</p>
+            <a href="mailto:support@harvconnect.com" class="helpline-link-new">support@harvconnect.com</a>
+          </div>
+        </div>
+        <div class="helpline-card-new">
+          <div class="helpline-icon-wrap-new">&#128172;</div>
+          <div class="helpline-details-new">
+            <h3>WhatsApp</h3>
+            <p class="helpline-sub-text">Chat with us anytime</p>
+            <a href="https://wa.me/233500000000" class="helpline-link-new">Start Chat</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="detailed-footer-new">
+    <div class="footer-grid-container-new">
+      <div class="footer-identity-column-new">
+        <div class="footer-logo-wrap-new">
+          <img src="images/HarvConnect-logo.png" alt="HarvConnect" style="height:40px;" />
+        </div>
+        <p class="footer-tagline-desc-new">
+          Connecting Ghana's smallholder farmers directly to buyers.
+          Fair prices, fresh produce, reliable delivery.
+        </p>
+      </div>
+      <div class="footer-links-column-new">
+        <h3>PLATFORM</h3>
+        <ul>
+          <li><a href="#marketplace-preview">Marketplace</a></li>
+          <li><a href="register.html">Become a Farmer</a></li>
+          <li><a href="register.html">Become a Buyer</a></li>
+          <li><a href="register.html">Join as Transporter</a></li>
+        </ul>
+      </div>
+      <div class="footer-links-column-new">
+        <h3>SUPPORT</h3>
+        <ul>
+          <li><a href="tel:+233500000000">Help Center</a></li>
+          <li><a href="mailto:support@harvconnect.com">Email Support</a></li>
+          <li><a href="#faq">FAQs</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom-bar-new">
+      <p>&copy; 2026 HarvConnect. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      var user = HarvConnectAuth.getUser();
+      var role = user ? user.role : null;
+      var navHtml = "";
+      var mobileHtml = "";
+      var ctaBtn = document.getElementById("ctaBtn");
+
+      if (!user) {
+        navHtml = '<a href="index.html">Home</a><a href="#marketplace-preview">Marketplace</a><a href="#how-it-works">How It Works</a><a href="#faq">FAQ</a><a href="login.html">Login</a>';
+        mobileHtml = '<a href="index.html" class="mobile-link">Home</a><a href="#marketplace-preview" class="mobile-link">Marketplace</a><a href="#how-it-works" class="mobile-link">How It Works</a><a href="#faq" class="mobile-link">FAQ</a><a href="login.html" class="mobile-link highlight">Login</a>';
+      } else {
+        navHtml = '<a href="index.html">Home</a><a href="#marketplace-preview">Marketplace</a><a href="#how-it-works">How It Works</a><a href="#faq">FAQ</a>';
+        mobileHtml = '<a href="index.html" class="mobile-link">Home</a><a href="#marketplace-preview" class="mobile-link">Marketplace</a>';
+
+        var dashboardLinks = "";
+        if (role === "FARMER") {
+          dashboardLinks = '<a href="farmer-products.html" class="btn-nav-get-started" style="font-size:13px;">My Dashboard</a>';
+        } else if (role === "BUYER") {
+          dashboardLinks = '<a href="marketplace.html" class="btn-nav-get-started" style="font-size:13px;">My Dashboard</a>';
+        } else if (role === "TRANSPORT") {
+          dashboardLinks = '<a href="transport.html" class="btn-nav-get-started" style="font-size:13px;">My Dashboard</a>';
+        }
+
+        if (ctaBtn) {
+          ctaBtn.outerHTML = dashboardLinks || '<a href="register.html" class="btn-nav-get-started" style="font-size:13px;">Get Started</a>';
+        }
+      }
+      document.getElementById("desktopNav").innerHTML = navHtml;
+      document.getElementById("mobileNav").innerHTML = mobileHtml;
+
+      window.toggleMobile = function () {
+        document.getElementById("mobileNav").classList.toggle("open");
+      };
+
+      window.toggleFaq = function (btn) {
+        var item = btn.closest(".faq-item");
+        var isOpen = item.classList.contains("open");
+        document.querySelectorAll(".faq-item.open").forEach(function (el) {
+          el.classList.remove("open");
+          var answer = el.querySelector(".faq-answer");
+          if (answer) answer.style.maxHeight = "0";
+        });
+        if (!isOpen) {
+          item.classList.add("open");
+          var answer = item.querySelector(".faq-answer");
+          if (answer) answer.style.maxHeight = answer.scrollHeight + "px";
+        }
+      };
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) entry.target.classList.add("visible");
+        });
+      }, { threshold: 0.1 });
+
+      document.querySelectorAll(".fade-in").forEach(function (el) { observer.observe(el); });
+
+      var scrollBtn = document.createElement("button");
+      scrollBtn.id = "scrollTopBtn";
+      scrollBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 15l-6-6-6 6"/></svg>';
+      scrollBtn.setAttribute("aria-label", "Scroll to top");
+      Object.assign(scrollBtn.style, {
+        position: "fixed", bottom: "24px", right: "24px", width: "44px", height: "44px",
+        borderRadius: "50%", background: "var(--primary-green)", color: "#fff", border: "none",
+        cursor: "pointer", display: "none", alignItems: "center", justifyContent: "center",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: "9999", transition: "opacity 0.3s",
+      });
+      document.body.appendChild(scrollBtn);
+      scrollBtn.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: "smooth" }); });
+      window.addEventListener("scroll", function () {
+        scrollBtn.style.display = window.scrollY > 600 ? "flex" : "none";
+      });
+
+      loadMarketplacePreview();
+    })();
+
+    async function loadMarketplacePreview() {
+      var grid = document.getElementById("marketplaceGrid");
+      try {
+        var res = await HarvConnectAPI.products.list({ limit: 8 });
+        var products = res.data.products || [];
+        if (products.length === 0) {
+          grid.innerHTML = '<p style="text-align:center;color:var(--text-gray);grid-column:1/-1;">No products available yet. Be the first to list!</p>';
+          return;
+        }
+        grid.innerHTML = products.map(function (p) {
+          return (
+            '<a href="product-detail.html?id=' + p.id + '" class="produce-card-new" style="text-decoration:none;color:inherit;">' +
+              '<div class="produce-img-placeholder-new">' +
+                (p.image || p.imageUrl
+                  ? '<img src="' + (p.image || p.imageUrl) + '" alt="' + (p.name || "") + '" class="produce-img" loading="lazy" />'
+                  : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:32px;">&#127807;</div>') +
+              "</div>" +
+              '<div class="produce-info-new">' +
+                "<h3>" + (p.name || "") + "</h3>" +
+                '<p class="author-new">' + (p.farmerName || "Farmer") + "</p>" +
+                '<p class="price-new">' + HarvConnectUtils.formatCedis(p.price) + " / " + (p.unit || "unit") + "</p>" +
+                '<p class="location-new">&#128205; ' + (p.location || "Ghana") + "</p>" +
+              "</div>" +
+            "</a>"
+          );
+        }).join("");
+      } catch (e) {
+        grid.innerHTML = '<p style="text-align:center;color:var(--text-gray);grid-column:1/-1;">Unable to load marketplace. Please try again later.</p>';
+      }
+    }
+  </script>
+</body>
+</html>

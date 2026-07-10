@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Driver Profile - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <style>
+    .dp-layout { max-width:720px; margin:0 auto; }
+    .dp-header-card { background:#fff; border:1px solid var(--hc-border); border-radius:var(--hc-radius-lg); padding:32px; text-align:center; margin-bottom:20px; }
+    .dp-avatar { width:80px; height:80px; border-radius:50%; background:var(--hc-green-light); color:var(--hc-green); font-size:28px; font-weight:700; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; }
+    .dp-name { font-size:24px; font-weight:700; margin-bottom:4px; }
+    .dp-role-tag { display:inline-block; background:var(--hc-green-light); color:var(--hc-green); font-size:12px; font-weight:600; padding:4px 12px; border-radius:20px; margin-bottom:12px; }
+    .dp-status { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; padding:6px 14px; border-radius:20px; }
+    .dp-status.available { background:#E8F5E9; color:var(--hc-green); }
+    .dp-status.unavailable { background:#FFF3E0; color:#E65100; }
+    .dp-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .dp-info-card { background:#fff; border:1px solid var(--hc-border); border-radius:var(--hc-radius-lg); padding:20px; }
+    .dp-info-card h3 { font-size:15px; font-weight:700; margin-bottom:12px; color:var(--hc-text-gray); text-transform:uppercase; letter-spacing:0.5px; }
+    .dp-info-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--hc-border); font-size:14px; }
+    .dp-info-row:last-child { border-bottom:none; }
+    .dp-info-row .lbl { color:var(--hc-text-gray); }
+    .dp-info-row .val { font-weight:600; color:var(--hc-text); }
+    .dp-actions { display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; justify-content:center; }
+    .not-found { text-align:center; padding:80px 20px; }
+    .not-found h2 { font-size:20px; margin-bottom:8px; }
+    .not-found p { color:var(--hc-text-gray); margin-bottom:20px; }
+  </style>
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container">
+        <div style="margin-bottom:16px;">
+          <a href="javascript:history.back()" style="color:var(--hc-green);text-decoration:none;font-size:14px;font-weight:600;">&larr; Back</a>
+        </div>
+        <div id="driverProfileContent" class="dp-layout">
+          <div class="not-found">
+            <h2>Loading driver profile...</h2>
+            <p>Please wait</p>
+          </div>
+        </div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+
+      var params = HarvConnectUtils.getParams();
+      var driverId = params.id || "";
+
+      if (!driverId) {
+        document.getElementById("driverProfileContent").innerHTML =
+          '<div class="not-found"><h2>Driver not found</h2><p>No driver ID was provided.</p><a href="marketplace.html" class="hc-btn hc-btn-primary">Browse Marketplace</a></div>';
+        return;
+      }
+
+      function loadDriver() {
+        var content = document.getElementById("driverProfileContent");
+        var driver = null;
+
+        try {
+          var registry = JSON.parse(localStorage.getItem("hc_driver_registry") || "{}");
+          driver = registry[driverId] || null;
+        } catch (e) {}
+
+        if (!driver && window._apiDrivers) {
+          driver = window._apiDrivers.find(function (d) { return d.id === driverId; });
+        }
+
+        if (!driver) {
+          content.innerHTML =
+            '<div class="not-found"><h2>Driver not found</h2><p>This driver is not currently registered on HarvConnect.</p><a href="get-transport.html" class="hc-btn hc-btn-primary">Find Transport</a></div>';
+          return;
+        }
+
+        var tp = driver.transportProfile || {};
+        var isAvail = tp.isAvailable !== false;
+        var phone = driver.phone || "";
+        var phoneDigits = phone.replace(/[^0-9]/g, "");
+        var statusClass = isAvail ? "available" : "unavailable";
+        var statusText = isAvail ? "Available for deliveries" : "Currently unavailable";
+
+        content.innerHTML =
+          '<div class="dp-header-card">' +
+            '<div class="dp-avatar">' + HarvConnectUtils.getInitials(driver.fullName) + "</div>" +
+            '<div class="dp-name">' + (driver.fullName || "Driver") + "</div>" +
+            '<div class="dp-role-tag">Transport Provider</div>' +
+            '<div class="dp-status ' + statusClass + '">' +
+              '<span style="width:8px;height:8px;border-radius:50%;background:' + (isAvail ? 'var(--hc-green)' : '#E65100') + ';display:inline-block;"></span>' +
+              statusText +
+            "</div>" +
+          "</div>" +
+          '<div class="dp-grid">' +
+            '<div class="dp-info-card">' +
+              "<h3>Vehicle Details</h3>" +
+              '<div class="dp-info-row"><span class="lbl">Vehicle Type</span><span class="val">' + HarvConnectUtils.getVehicleLabel(tp.vehicleType) + "</span></div>" +
+              '<div class="dp-info-row"><span class="lbl">Capacity</span><span class="val">' + (tp.capacity || 0) + " kg</span></div>" +
+              '<div class="dp-info-row"><span class="lbl">Phone</span><span class="val">' + phone + "</span></div>" +
+            "</div>" +
+            '<div class="dp-info-card">' +
+              "<h3>Location</h3>" +
+              '<div class="dp-info-row"><span class="lbl">Region</span><span class="val">' + (tp.currentRegion || "N/A") + "</span></div>" +
+              '<div class="dp-info-row"><span class="lbl">Address</span><span class="val">' + (tp.currentAddress || "N/A") + "</span></div>" +
+              '<div class="dp-info-row"><span class="lbl">Coordinates</span><span class="val">' + (tp.currentLat ? tp.currentLat.toFixed(4) + ", " + tp.currentLng.toFixed(4) : "N/A") + "</span></div>" +
+            "</div>" +
+          "</div>" +
+          '<div class="dp-actions">' +
+            '<button class="hc-btn hc-btn-primary" onclick="chatDriver(\'' + driverId + "','" + (driver.fullName || "Driver").replace(/'/g, "\\'") + "')\">Chat Driver</button>" +
+            (phoneDigits ? '<a href="https://wa.me/' + phoneDigits + '?text=Hello%20' + encodeURIComponent(driver.fullName || "Driver") + '%2C%20I%20saw%20your%20profile%20on%20HarvConnect." target="_blank" class="hc-btn hc-btn-outline">WhatsApp</a>' : "") +
+            (phoneDigits ? '<a href="tel:' + phoneDigits + '" class="hc-btn hc-btn-outline">Call</a>' : "") +
+          "</div>";
+      }
+
+      window.chatDriver = function (dId, dName) {
+        var user = HarvConnectAuth.getUser();
+        if (!user) { HarvConnectComponents.showToast("Please sign in to chat.", "info"); return; }
+        HarvConnectChat.getOrCreateChat({
+          participant1Id: user.id,
+          participant1Name: user.fullName || "Me",
+          participant1Role: user.role || "BUYER",
+          participant2Id: dId,
+          participant2Name: dName || "Driver",
+          participant2Role: "TRANSPORT",
+          orderId: "",
+        });
+        window.location.href = "chat.html?chat=chat_" + HarvConnectChat.getChatId(user.id, dId);
+      };
+
+      loadDriver();
+    })();
+  </script>
+</body>
+</html>

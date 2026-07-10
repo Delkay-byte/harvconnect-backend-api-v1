@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container" style="max-width:600px;">
+        <div class="page-header">
+          <h1>My Profile</h1>
+          <p>Manage your account settings</p>
+        </div>
+
+        <div class="hc-card" style="margin-bottom:24px;">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+            <div class="user-avatar-sm" style="width:56px;height:56px;font-size:20px;" id="avatar"></div>
+            <div>
+              <h3 id="userName" style="font-size:18px;font-weight:700;"></h3>
+              <p id="userEmail" style="font-size:14px;color:var(--hc-text-gray);"></p>
+              <span id="userRole" class="hc-badge hc-badge-success" style="margin-top:4px;"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hc-card" id="profileFormCard" style="margin-bottom:24px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3 style="font-size:18px;font-weight:700;">Profile Details</h3>
+            <button class="hc-btn hc-btn-outline hc-btn-sm" id="editProfileBtn" onclick="toggleEditMode()">Edit Profile</button>
+          </div>
+          <form id="profileForm" novalidate>
+            <div id="profileFields"></div>
+            <div id="profileError" class="hc-form-error" style="display:none;margin-bottom:12px;"></div>
+            <div id="saveArea" style="display:none;">
+              <button type="submit" class="hc-btn hc-btn-primary" id="saveProfileBtn">Save Changes</button>
+              <button type="button" class="hc-btn hc-btn-ghost" onclick="cancelEdit()">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="hc-card" style="margin-bottom:24px;">
+          <h3 style="font-size:18px;font-weight:700;margin-bottom:16px;">Change Password</h3>
+          <form id="passwordForm" novalidate>
+            <div class="hc-form-group">
+              <label>Current Password</label>
+              <input type="password" id="currentPassword" class="hc-input" placeholder="Enter your current password" required />
+            </div>
+            <div class="hc-form-group">
+              <label>New Password</label>
+              <input type="password" id="newPassword" class="hc-input" placeholder="Enter new password" required />
+              <div id="pwStrength" style="margin-top:6px;font-size:12px;"></div>
+            </div>
+            <div class="hc-form-group">
+              <label>Confirm New Password</label>
+              <input type="password" id="confirmPassword" class="hc-input" placeholder="Confirm new password" required />
+            </div>
+            <div id="pwError" class="hc-form-error" style="display:none;margin-bottom:12px;"></div>
+            <button type="submit" class="hc-btn hc-btn-primary" id="changePwBtn">Update Password</button>
+          </form>
+        </div>
+
+        <div class="hc-card" style="border-color:var(--hc-danger);">
+          <h3 style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--hc-danger);">Danger Zone</h3>
+          <p style="font-size:14px;color:var(--hc-text-gray);margin-bottom:16px;">Permanently delete your account and all associated data.</p>
+          <button class="hc-btn hc-btn-danger" onclick="deleteAccount()">Delete Account</button>
+        </div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("profile");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+
+      if (!HarvConnectAuth.requireAuth()) return;
+
+      var user = HarvConnectAuth.getUser();
+      var role = user ? user.role : "";
+      var editing = false;
+      var savedValues = {};
+
+      document.getElementById("avatar").textContent = HarvConnectUtils.getInitials(user.fullName);
+      document.getElementById("userName").textContent = user.fullName || "";
+      document.getElementById("userEmail").textContent = user.email || "";
+      document.getElementById("userRole").textContent = role;
+
+      function renderProfileFields(readonly) {
+        var fieldsHtml = "";
+        var ro = readonly ? " readonly style='background:#f5f5f5;'" : "";
+        if (role === "FARMER") {
+          var fp = user.farmerProfile || {};
+          fieldsHtml =
+            '<div class="hc-form-group"><label>Full Name</label><input type="text" id="pfName" class="hc-input" value="' + (user.fullName || "") + '"' + ro + " /></div>" +
+            '<div class="hc-form-group"><label>Farm Name</label><input type="text" id="pfFarmName" class="hc-input" value="' + (fp.farmName || "") + '" placeholder="e.g. Mensah Farms"' + (ro ? "" : "") + " /></div>" +
+            '<div class="hc-form-group"><label>Bio</label><textarea id="pfBio" class="hc-textarea" placeholder="Tell buyers about your farm..."' + (ro ? " readonly style='background:#f5f5f5;'" : "") + ">" + (fp.bio || "") + "</textarea></div>" +
+            '<div class="hc-form-group"><label>Address</label><input type="text" id="pfAddress" class="hc-input" value="' + (fp.address || "") + '" placeholder="e.g. Volta Region, Ho"' + (ro ? "" : "") + " /></div>" +
+            '<div class="hc-grid-2">' +
+              '<div class="hc-form-group"><label>Latitude</label><input type="number" id="pfLat" class="hc-input" value="' + (fp.latitude || "") + '" step="any"' + (ro ? "" : "") + " /></div>" +
+              '<div class="hc-form-group"><label>Longitude</label><input type="number" id="pfLng" class="hc-input" value="' + (fp.longitude || "") + '" step="any"' + (ro ? "" : "") + " /></div>" +
+            "</div>";
+        } else if (role === "BUYER") {
+          var bp = user.buyerProfile || {};
+          fieldsHtml =
+            '<div class="hc-form-group"><label>Full Name</label><input type="text" id="pfName" class="hc-input" value="' + (user.fullName || "") + '"' + ro + " /></div>" +
+            '<div class="hc-form-group"><label>Delivery Address</label><input type="text" id="pfAddress" class="hc-input" value="' + (bp.deliveryAddress || "") + '" placeholder="e.g. East Legon, Accra"' + (ro ? "" : "") + " /></div>" +
+            '<div class="hc-grid-2">' +
+              '<div class="hc-form-group"><label>Latitude</label><input type="number" id="pfLat" class="hc-input" value="' + (bp.latitude || "") + '" step="any"' + (ro ? "" : "") + " /></div>" +
+              '<div class="hc-form-group"><label>Longitude</label><input type="number" id="pfLng" class="hc-input" value="' + (bp.longitude || "") + '" step="any"' + (ro ? "" : "") + " /></div>" +
+            "</div>";
+        } else if (role === "TRANSPORT") {
+          fieldsHtml =
+            '<div class="hc-form-group"><label>Full Name</label><input type="text" id="pfName" class="hc-input" value="' + (user.fullName || "") + '"' + ro + " /></div>" +
+            '<p style="font-size:14px;color:var(--hc-text-gray);">Transport profile is managed from the <a href="transport.html" style="color:var(--hc-green);">Transport Dashboard</a>.</p>';
+        }
+        document.getElementById("profileFields").innerHTML = fieldsHtml;
+      }
+
+      renderProfileFields(true);
+
+      window.toggleEditMode = function () {
+        editing = true;
+        document.getElementById("editProfileBtn").style.display = "none";
+        document.getElementById("saveArea").style.display = "flex";
+        document.getElementById("saveArea").style.gap = "12px";
+        document.getElementById("saveArea").style.marginTop = "16px";
+        renderProfileFields(false);
+      };
+
+      window.cancelEdit = function () {
+        editing = false;
+        document.getElementById("editProfileBtn").style.display = "";
+        document.getElementById("saveArea").style.display = "none";
+        document.getElementById("profileError").style.display = "none";
+        renderProfileFields(true);
+      };
+
+      document.getElementById("profileForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        var errorEl = document.getElementById("profileError");
+        var btn = document.getElementById("saveProfileBtn");
+        errorEl.style.display = "none";
+        btn.disabled = true;
+        btn.textContent = "Saving...";
+
+        try {
+          if (role === "FARMER") {
+            var payload = {};
+            var fn = document.getElementById("pfFarmName");
+            var bio = document.getElementById("pfBio");
+            var addr = document.getElementById("pfAddress");
+            var lat = document.getElementById("pfLat");
+            var lng = document.getElementById("pfLng");
+            if (fn) payload.farmName = fn.value.trim();
+            if (bio) payload.bio = bio.value.trim();
+            if (addr) payload.address = addr.value.trim();
+            if (lat && lat.value) payload.latitude = parseFloat(lat.value);
+            if (lng && lng.value) payload.longitude = parseFloat(lng.value);
+            var res = await HarvConnectAPI.profile.updateFarmer(payload);
+            user.farmerProfile = res.data.profile;
+          } else if (role === "BUYER") {
+            var payload = {};
+            var addr = document.getElementById("pfAddress");
+            var lat = document.getElementById("pfLat");
+            var lng = document.getElementById("pfLng");
+            if (addr) payload.deliveryAddress = addr.value.trim();
+            if (lat && lat.value) payload.latitude = parseFloat(lat.value);
+            if (lng && lng.value) payload.longitude = parseFloat(lng.value);
+            var res = await HarvConnectAPI.profile.updateBuyer(payload);
+            user.buyerProfile = res.data.profile;
+          }
+          sessionStorage.setItem("hc_user", JSON.stringify(user));
+          editing = false;
+          document.getElementById("editProfileBtn").style.display = "";
+          document.getElementById("saveArea").style.display = "none";
+          renderProfileFields(true);
+          document.getElementById("userName").textContent = user.fullName || "";
+          HarvConnectComponents.showToast("Profile updated successfully!", "success");
+        } catch (err) {
+          errorEl.textContent = err.message || "Failed to update profile.";
+          errorEl.style.display = "block";
+        }
+
+        btn.disabled = false;
+        btn.textContent = "Save Changes";
+      });
+
+      HarvConnectComponents.setupPasswordToggle("currentPassword");
+      HarvConnectComponents.setupPasswordToggle("newPassword");
+      HarvConnectComponents.setupPasswordToggle("confirmPassword");
+
+      document.getElementById("newPassword").addEventListener("input", function () {
+        var val = this.value;
+        var errors = HarvConnectUtils.validatePassword(val);
+        var el = document.getElementById("pwStrength");
+        if (!val) { el.innerHTML = ""; return; }
+        var color = errors.length === 0 ? "var(--hc-success)" : "var(--hc-danger)";
+        el.innerHTML = errors.length === 0
+          ? '<span style="color:' + color + ';">Strong password</span>'
+          : '<span style="color:' + color + ';">Needs: ' + errors.join(", ") + "</span>";
+      });
+
+      document.getElementById("passwordForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        var errorEl = document.getElementById("pwError");
+        var btn = document.getElementById("changePwBtn");
+        errorEl.style.display = "none";
+
+        var currentPw = document.getElementById("currentPassword").value;
+        var newPw = document.getElementById("newPassword").value;
+        var confirmPw = document.getElementById("confirmPassword").value;
+
+        if (!currentPw) {
+          errorEl.textContent = "Please enter your current password.";
+          errorEl.style.display = "block";
+          return;
+        }
+        if (!newPw || newPw.length < 8) {
+          errorEl.textContent = "New password must be at least 8 characters.";
+          errorEl.style.display = "block";
+          return;
+        }
+        var pwErrors = HarvConnectUtils.validatePassword(newPw);
+        if (pwErrors.length > 0) {
+          errorEl.textContent = "Password requirements: " + pwErrors.join(", ");
+          errorEl.style.display = "block";
+          return;
+        }
+        if (newPw !== confirmPw) {
+          errorEl.textContent = "New passwords do not match.";
+          errorEl.style.display = "block";
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Verifying...";
+
+        try {
+          await HarvConnectAPI.auth.login({ email: user.email, password: currentPw });
+        } catch (err) {
+          errorEl.textContent = "Current password is incorrect.";
+          errorEl.style.display = "block";
+          btn.disabled = false;
+          btn.textContent = "Update Password";
+          return;
+        }
+
+        btn.textContent = "Sending reset...";
+
+        try {
+          await HarvConnectAPI.auth.forgotPassword(user.email);
+          HarvConnectComponents.showToast("A password reset link has been sent to " + user.email + ". Please check your email.", "success");
+          document.getElementById("currentPassword").value = "";
+          document.getElementById("newPassword").value = "";
+          document.getElementById("confirmPassword").value = "";
+          document.getElementById("pwStrength").innerHTML = "";
+        } catch (err) {
+          errorEl.textContent = "Failed to send reset email: " + err.message;
+          errorEl.style.display = "block";
+        }
+
+        btn.disabled = false;
+        btn.textContent = "Update Password";
+      });
+
+      window.deleteAccount = function () {
+        HarvConnectComponents.showModal(
+          "Delete Account",
+          "<p>Are you sure? This action cannot be undone. All your data will be permanently removed.</p>",
+          [
+            { label: "Cancel", className: "hc-btn hc-btn-ghost", onclick: "HarvConnectComponents.closeModal()" },
+            { label: "Delete My Account", className: "hc-btn hc-btn-danger", onclick: "confirmDeleteAccount()" },
+          ]
+        );
+      };
+
+      window.confirmDeleteAccount = async function () {
+        try {
+          await HarvConnectAPI.auth.deleteAccount();
+          HarvConnectComponents.closeModal();
+          HarvConnectAuth.clearSession();
+          HarvConnectComponents.showToast("Account deleted.", "success");
+          setTimeout(function () { window.location.href = "index.html"; }, 1000);
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed to delete account: " + err.message, "error");
+        }
+      };
+    })();
+  </script>
+</body>
+</html>

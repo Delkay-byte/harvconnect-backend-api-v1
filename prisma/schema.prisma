@@ -123,12 +123,30 @@ model Order {
   farmer          User        @relation("FarmerOrders", fields: [farmerId], references: [id])
   product         Product     @relation(fields: [productId], references: [id])
   transporter     User?       @relation("TransporterOrders", fields: [transporterId], references: [id])
+  tracking        DeliveryTracking?
 
   @@index([buyerId])
   @@index([farmerId])
   @@index([transporterId])
   @@index([productId])
   @@index([status])
+}
+
+model DeliveryTracking {
+  id          String   @id @default(uuid())
+  orderId     String   @unique
+  status      String   @default("ASSIGNED")
+  currentLat  Float?
+  currentLng  Float?
+  startedAt   DateTime?
+  pickedUpAt  DateTime?
+  deliveredAt DateTime?
+  etaMinutes  Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
 }
 
 model AuthToken {

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notifications - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <style>
+    .notif-card { background:#fff; border:1px solid var(--hc-border); border-radius:var(--hc-radius-lg); padding:20px; margin-bottom:12px; transition:box-shadow 0.2s; }
+    .notif-card:hover { box-shadow:var(--hc-shadow-lg); }
+    .notif-card.unread { border-left:4px solid var(--hc-green); }
+    .notif-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .notif-title { font-size:15px; font-weight:700; }
+    .notif-time { font-size:12px; color:var(--hc-text-gray); }
+    .notif-message { font-size:14px; color:var(--hc-text-gray); margin-bottom:16px; line-height:1.5; }
+    .notif-actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .notif-empty { text-align:center; padding:60px 20px; }
+    .notif-empty svg { margin-bottom:16px; }
+    .notif-empty h3 { font-size:18px; margin-bottom:8px; }
+    .notif-empty p { font-size:14px; color:var(--hc-text-gray); }
+  </style>
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container" style="max-width:700px;">
+        <div class="page-header">
+          <h1>Notifications</h1>
+          <p>Stay updated on your orders and activity</p>
+        </div>
+        <div id="notifContent"></div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("notifications");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+      HarvConnectComponents.setupNotifListener();
+
+      if (!HarvConnectAuth.requireAuth()) return;
+
+      var user = HarvConnectAuth.getUser();
+      var role = user ? user.role : null;
+      var content = document.getElementById("notifContent");
+
+      function render() {
+        if (role === "TRANSPORT") {
+          renderDriverNotifs();
+          return;
+        }
+
+        var notifs = HarvConnectNotifications.getNotifications();
+
+        if (notifs.length === 0) {
+          content.innerHTML =
+            '<div class="notif-empty">' +
+              '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>' +
+              "<h3>No notifications yet</h3>" +
+              "<p>When a farmer accepts your order, you'll see it here.</p>" +
+            "</div>";
+          return;
+        }
+
+        content.innerHTML = notifs.map(function (n) {
+          var isUnread = !n.read;
+          var timeAgo = "";
+          var diff = Date.now() - n.timestamp;
+          var mins = Math.floor(diff / 60000);
+          if (mins < 1) timeAgo = "Just now";
+          else if (mins < 60) timeAgo = mins + "m ago";
+          else if (mins < 1440) timeAgo = Math.floor(mins / 60) + "h ago";
+          else timeAgo = Math.floor(mins / 1440) + "d ago";
+
+          return (
+            '<div class="notif-card' + (isUnread ? " unread" : "") + '">' +
+              '<div class="notif-header">' +
+                '<div class="notif-title">Order #' + n.orderNumber + " - " + (n.productName || "Product") + "</div>" +
+                '<div class="notif-time">' + timeAgo + "</div>" +
+              "</div>" +
+              '<div class="notif-message">' + (n.message || "Your order status has been updated.") + "</div>" +
+              '<div class="notif-actions">' +
+                '<button class="hc-btn hc-btn-primary hc-btn-sm" onclick="getDriver(\'' + n.orderId + "')\">Get Driver</button>" +
+                '<button class="hc-btn hc-btn-danger hc-btn-sm" onclick="cancelOrderNotif(\'' + n.orderId + "')\">Cancel Order</button>" +
+                '<button class="hc-btn hc-btn-ghost hc-btn-sm" onclick="dismissNotif(\'' + n.orderId + "')\">Dismiss</button>" +
+              "</div>" +
+            "</div>"
+          );
+        }).join("");
+
+        notifs.forEach(function (n) { HarvConnectNotifications.markAsRead(n.orderId); });
+        HarvConnectComponents.updateNotifBadge();
+      }
+
+      function renderDriverNotifs() {
+        var notifs = HarvConnectNotifications.getDriverNotifications();
+
+        if (notifs.length === 0) {
+          content.innerHTML =
+            '<div class="notif-empty">' +
+              '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>' +
+              "<h3>No delivery requests yet</h3>" +
+              "<p>When a buyer selects you for delivery, you'll see it here.</p>" +
+            "</div>";
+          return;
+        }
+
+        content.innerHTML = notifs.map(function (n) {
+          var isUnread = !n.read;
+          var timeAgo = "";
+          var diff = Date.now() - n.timestamp;
+          var mins = Math.floor(diff / 60000);
+          if (mins < 1) timeAgo = "Just now";
+          else if (mins < 60) timeAgo = mins + "m ago";
+          else if (mins < 1440) timeAgo = Math.floor(mins / 60) + "h ago";
+          else timeAgo = Math.floor(mins / 1440) + "d ago";
+
+          return (
+            '<div class="notif-card' + (isUnread ? " unread" : "") + '">' +
+              '<div class="notif-header">' +
+                '<div class="notif-title">Delivery Request #' + n.orderNumber + " - " + (n.productName || "Product") + "</div>" +
+                '<div class="notif-time">' + timeAgo + "</div>" +
+              "</div>" +
+              '<div style="font-size:13px;color:var(--hc-text-gray);margin-bottom:8px;">' +
+                "<strong>Buyer:</strong> " + n.buyerName + "<br>" +
+                "<strong>Pickup:</strong> " + n.pickupAddress + "<br>" +
+                "<strong>Delivery:</strong> " + n.deliveryAddress +
+              "</div>" +
+              '<div class="notif-message">' + (n.message || "New delivery request.") + "</div>" +
+              '<div class="notif-actions">' +
+                '<button class="hc-btn hc-btn-primary hc-btn-sm" onclick="acceptDriverNotif(\'' + (n.driverId || "") + "','" + n.orderId + "')\">Accept Delivery</button>" +
+                '<button class="hc-btn hc-btn-ghost hc-btn-sm" onclick="dismissDriverNotifPage(\'' + (n.driverId || "") + "','" + n.orderId + "')\">Dismiss</button>" +
+              "</div>" +
+            "</div>"
+          );
+        }).join("");
+
+        notifs.forEach(function (n) {
+          var key = "hc_notif_driver_" + (n.driverId || "") + "_" + n.orderId;
+          HarvConnectNotifications.markDriverNotifAsRead(key);
+        });
+        HarvConnectComponents.updateNotifBadge();
+      }
+
+      window.getDriver = function (orderId) {
+        HarvConnectNotifications.markAsRead(orderId);
+        window.location.href = "get-transport.html?orderId=" + orderId;
+      };
+
+      window.cancelOrderNotif = async function (orderId) {
+        try {
+          await HarvConnectAPI.orders.updateStatus(orderId, "CANCELLED");
+          HarvConnectNotifications.dismissNotification(orderId);
+          HarvConnectComponents.showToast("Order cancelled.", "success");
+          render();
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed to cancel: " + err.message, "error");
+        }
+      };
+
+      window.dismissNotif = function (orderId) {
+        HarvConnectNotifications.dismissNotification(orderId);
+        render();
+      };
+
+      window.acceptDriverNotif = function (driverId, orderId) {
+        HarvConnectComponents.showToast("Delivery request accepted! Contact the buyer to arrange pickup.", "success");
+        var key = "hc_notif_driver_" + driverId + "_" + orderId;
+        HarvConnectNotifications.dismissDriverNotif(key);
+        render();
+      };
+
+      window.dismissDriverNotifPage = function (driverId, orderId) {
+        var key = "hc_notif_driver_" + driverId + "_" + orderId;
+        HarvConnectNotifications.dismissDriverNotif(key);
+        render();
+      };
+
+      window.addEventListener("storage", function (e) {
+        if (e.key && e.key.indexOf("hc_notif_") === 0) {
+          render();
+        }
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+/* ========================================
+   HarvConnect Auth Pages CSS
+   ======================================== */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hc-green-bg);
+  padding: 24px;
+}
+
+.auth-card {
+  background: #fff;
+  border-radius: var(--hc-radius-lg);
+  box-shadow: var(--hc-shadow-lg);
+  width: 100%;
+  max-width: 440px;
+  padding: 40px 32px;
+}
+
+.auth-logo {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-logo img {
+  height: 48px;
+  margin: 0 auto 8px;
+}
+
+.auth-logo h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--hc-text);
+}
+
+.auth-logo h2 span {
+  color: var(--hc-green);
+}
+
+.auth-subtitle {
+  text-align: center;
+  font-size: 14px;
+  color: var(--hc-text-gray);
+  margin-bottom: 28px;
+}
+
+.auth-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--hc-text-gray);
+}
+
+.auth-footer a {
+  color: var(--hc-green);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--hc-text-light);
+  font-size: 13px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--hc-border);
+}
+
+/* --- Role Selector --- */
+.role-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.role-option {
+  border: 2px solid var(--hc-border);
+  border-radius: var(--hc-radius);
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fff;
+}
+
+.role-option:hover {
+  border-color: var(--hc-green);
+}
+
+.role-option.active {
+  border-color: var(--hc-green);
+  background: var(--hc-green-light);
+}
+
+.role-option-icon {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+
+.role-option-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--hc-text);
+}
+
+/* --- Password Strength --- */
+.pw-strength {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.pw-strength-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--hc-border);
+  transition: background 0.3s;
+}
+
+.pw-strength[data-strength="1"] .pw-strength-bar:nth-child(1) { background: var(--hc-danger); }
+.pw-strength[data-strength="2"] .pw-strength-bar:nth-child(-n+2) { background: var(--hc-warning); }
+.pw-strength[data-strength="3"] .pw-strength-bar:nth-child(-n+3) { background: #F59E0B; }
+.pw-strength[data-strength="4"] .pw-strength-bar:nth-child(-n+4) { background: var(--hc-success); }
+.pw-strength[data-strength="5"] .pw-strength-bar { background: var(--hc-green); }
+
+.pw-strength-text {
+  font-size: 11px;
+  margin-top: 4px;
+  color: var(--hc-text-light);
+}
+
+/* --- Responsive --- */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 28px 20px;
+  }
+
+  .role-selector {
+    grid-template-columns: 1fr;
+  }
+}

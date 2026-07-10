@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <a href="index.html"><img src="images/HarvConnect-logo.png" alt="HarvConnect" /></a>
+        <h2>Welcome to <span>Harv</span>Connect</h2>
+      </div>
+      <p class="auth-subtitle">Sign in to your account</p>
+
+      <form id="loginForm" novalidate>
+        <div class="hc-form-group">
+          <label>I am a</label>
+          <div class="role-selector" id="roleSelector">
+            <div class="role-option active" data-role="FARMER">
+              <div class="role-option-icon">&#127807;</div>
+              <div class="role-option-label">Farmer</div>
+            </div>
+            <div class="role-option" data-role="BUYER">
+              <div class="role-option-icon">&#128722;</div>
+              <div class="role-option-label">Buyer</div>
+            </div>
+            <div class="role-option" data-role="TRANSPORT">
+              <div class="role-option-icon">&#128666;</div>
+              <div class="role-option-label">Transport</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hc-form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" class="hc-input" placeholder="you@example.com" required autocomplete="email" />
+        </div>
+
+        <div class="hc-form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" class="hc-input" placeholder="Enter your password" required autocomplete="current-password" />
+          <div style="margin-top:4px;text-align:right;">
+            <a href="forgot-password.html" style="font-size:13px;color:var(--hc-green);text-decoration:none;">Forgot Password?</a>
+          </div>
+        </div>
+
+        <div id="loginError" class="hc-form-error" style="display:none;margin-bottom:16px;"></div>
+
+        <button type="submit" class="hc-btn hc-btn-primary hc-btn-block hc-btn-lg" id="loginBtn">
+          Sign In
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Don't have an account? <a href="register.html">Register here</a>
+      </div>
+      <div class="auth-footer" style="margin-top:8px;">
+        <a href="index.html" style="font-weight:400;color:var(--hc-text-gray);">Back to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script>
+    (function () {
+      if (HarvConnectAuth.isAuthenticated()) {
+        window.location.href = HarvConnectAuth.getLoginRedirect();
+        return;
+      }
+
+      var selectedRole = "FARMER";
+      var roleSelector = document.getElementById("roleSelector");
+      var form = document.getElementById("loginForm");
+      var errorEl = document.getElementById("loginError");
+      var btn = document.getElementById("loginBtn");
+
+      roleSelector.addEventListener("click", function (e) {
+        var option = e.target.closest(".role-option");
+        if (!option) return;
+        roleSelector.querySelectorAll(".role-option").forEach(function (o) {
+          o.classList.remove("active");
+        });
+        option.classList.add("active");
+        selectedRole = option.dataset.role;
+      });
+
+      HarvConnectComponents.setupPasswordToggle("password");
+
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        errorEl.style.display = "none";
+
+        var email = document.getElementById("email").value.trim();
+        var password = document.getElementById("password").value;
+
+        if (!email || !password) {
+          errorEl.textContent = "Please fill in all fields.";
+          errorEl.style.display = "block";
+          return;
+        }
+        if (!HarvConnectUtils.validateEmail(email)) {
+          errorEl.textContent = "Please enter a valid email address.";
+          errorEl.style.display = "block";
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Signing in...";
+
+        try {
+          var data = await HarvConnectAuth.login(email, password, selectedRole);
+          HarvConnectComponents.showToast("Login successful!", "success");
+          setTimeout(function () {
+            window.location.href = HarvConnectAuth.getDashboardPath(data.user.role);
+          }, 500);
+        } catch (err) {
+          var loginErrMsg;
+          if (err.status === 401) {
+            loginErrMsg = "Incorrect password. Please try again.";
+          } else if (err.status === 404) {
+            loginErrMsg = "No account found with this email address.";
+          } else {
+            loginErrMsg = err.message || "Invalid email or password.";
+          }
+          errorEl.textContent = loginErrMsg;
+          errorEl.style.display = "block";
+          HarvConnectComponents.showToast(loginErrMsg, "error");
+          btn.disabled = false;
+          btn.textContent = "Sign In";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

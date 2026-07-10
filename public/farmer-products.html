@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Products - HarvConnect</title>
+  <link rel="icon" href="images/HarvConnect-logo.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/marketplace.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+</head>
+<body>
+  <div class="app-page">
+    <div id="header"></div>
+    <main class="app-main">
+      <div class="page-container">
+        <div class="page-header hc-flex hc-flex-between" style="flex-wrap:wrap;gap:12px;">
+          <div>
+            <h1 id="greetingText">My Products</h1>
+            <p id="greetingSub">Manage your produce listings</p>
+          </div>
+          <button class="hc-btn hc-btn-primary" onclick="openAddModal()">+ Add New Product</button>
+        </div>
+        <div class="dashboard-stats" id="statsArea"></div>
+        <div class="products-manage-grid" id="productsGrid"></div>
+      </div>
+    </main>
+    <div id="footer"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/chat.js"></script>
+  <script>
+    (function () {
+      document.getElementById("header").innerHTML = HarvConnectComponents.renderHeader("products");
+      document.getElementById("footer").innerHTML = HarvConnectComponents.renderFooter();
+
+      if (!HarvConnectAuth.requireAuth() || !HarvConnectAuth.requireRole("FARMER")) return;
+
+      (function () {
+        var u = HarvConnectAuth.getUser();
+        if (u && u.fullName) {
+          document.getElementById("greetingText").textContent = HarvConnectUtils.getGreeting(u.fullName);
+          document.getElementById("greetingSub").textContent = "Manage your produce listings";
+        }
+      })();
+
+      var grid = document.getElementById("productsGrid");
+      var statsArea = document.getElementById("statsArea");
+      var myProducts = [];
+
+      async function loadProducts() {
+        grid.innerHTML = HarvConnectComponents.renderSkeletonCards(4);
+        try {
+          var user = HarvConnectAuth.getUser();
+          var res = await HarvConnectAPI.products.list({ limit: "100" });
+          var allProducts = res.data.products || [];
+          myProducts = allProducts.filter(function (p) {
+            return p.farmerId === user.id;
+          });
+          renderStats();
+          renderProducts();
+        } catch (err) {
+          grid.innerHTML = HarvConnectComponents.renderErrorState("Failed to load products.", "loadProducts");
+        }
+      }
+
+      function renderStats() {
+        statsArea.innerHTML =
+          '<div class="stat-card"><div class="stat-card-value">' + myProducts.length + '</div><div class="stat-card-label">Total Listings</div></div>' +
+          '<div class="stat-card"><div class="stat-card-value">' + myProducts.filter(function (p) { return p.available !== false; }).length + '</div><div class="stat-card-label">Active Products</div></div>' +
+          '<div class="stat-card"><div class="stat-card-value">' + myProducts.filter(function (p) { return !p.available; }).length + '</div><div class="stat-card-label">Unavailable</div></div>';
+      }
+
+      function renderProducts() {
+        if (myProducts.length === 0) {
+          grid.innerHTML = HarvConnectComponents.renderEmptyState(
+            "You haven't listed any products yet. Start selling your produce!"
+          );
+          return;
+        }
+
+        grid.innerHTML = myProducts.map(function (p) {
+          var imgUrl = p.image || p.imageUrl;
+          return (
+            '<div class="product-manage-card">' +
+              '<div class="product-manage-img">' +
+                (imgUrl ? '<img src="' + imgUrl + '" alt="' + (p.name || "") + '" loading="lazy" />' : '<div class="placeholder-icon">&#127807;</div>') +
+              "</div>" +
+              '<div class="product-manage-body">' +
+                "<h3>" + (p.name || "") + "</h3>" +
+                '<div class="product-manage-meta">' + HarvConnectUtils.getCategoryLabel(p.category) + " &bull; " + (p.quantity || 0) + " " + (p.unit || "") + "</div>" +
+                '<div class="product-manage-price">' + HarvConnectUtils.formatCedis(p.price) + " / " + (p.unit || "") + "</div>" +
+                '<div class="product-manage-actions">' +
+                  '<button class="hc-btn hc-btn-outline hc-btn-sm" onclick="openEditModal(\'' + p.id + "')\">Edit</button>" +
+                  '<button class="hc-btn hc-btn-danger hc-btn-sm" onclick="deleteProduct(\'' + p.id + "')\">Delete</button>" +
+                "</div>" +
+              "</div>" +
+            "</div>"
+          );
+        }).join("");
+      }
+
+      window.openAddModal = function () {
+        var categoriesHtml = Object.keys(HarvConnectUtils.CATEGORIES).map(function (k) {
+          return '<option value="' + k + '">' + HarvConnectUtils.CATEGORIES[k] + "</option>";
+        }).join("");
+        var unitsHtml = HarvConnectUtils.UNITS.map(function (u) {
+          return '<option value="' + u + '">' + u + "</option>";
+        }).join("");
+
+        var formHtml =
+          '<form id="productForm">' +
+            '<div class="hc-form-group"><label>Product Name *</label><input type="text" id="pName" class="hc-input" placeholder="e.g. Fresh Tomatoes" required /></div>' +
+            '<div class="hc-form-group"><label>Category *</label><select id="pCategory" class="hc-select">' + categoriesHtml + "</select></div>" +
+            '<div class="hc-form-group"><label>Price/Unit (GH\u20B5) *</label><input type="number" id="pPrice" class="hc-input" placeholder="e.g. 25.00" min="0.01" step="0.01" required /></div>' +
+            '<div class="hc-form-group"><label>Quantity *</label><input type="number" id="pQuantity" class="hc-input" placeholder="e.g. 100" min="1" required /></div>' +
+            '<div class="hc-form-group"><label>Unit *</label><select id="pUnit" class="hc-select">' + unitsHtml + "</select></div>" +
+            '<div class="hc-form-group"><label>Description</label><textarea id="pDescription" class="hc-textarea" placeholder="Describe your produce..."></textarea></div>' +
+            '<div class="hc-form-group"><label>Product Image</label><input type="file" id="pImage" class="hc-input" accept="image/*" /></div>' +
+          "</form>";
+
+        HarvConnectComponents.showModal("Add New Product", formHtml, [
+          { label: "Cancel", className: "hc-btn hc-btn-ghost", onclick: "HarvConnectComponents.closeModal()" },
+          { label: "Add Product", className: "hc-btn hc-btn-primary", onclick: "submitProduct()" },
+        ]);
+      };
+
+      window.submitProduct = async function () {
+        var name = document.getElementById("pName").value.trim();
+        var category = document.getElementById("pCategory").value;
+        var price = parseFloat(document.getElementById("pPrice").value);
+        var quantity = parseInt(document.getElementById("pQuantity").value, 10);
+        var unit = document.getElementById("pUnit").value;
+        var description = document.getElementById("pDescription").value.trim();
+        var imageFile = document.getElementById("pImage").files[0];
+
+        if (!name || !category || isNaN(price) || isNaN(quantity) || !unit) {
+          HarvConnectComponents.showToast("Please fill in all required fields.", "error");
+          return;
+        }
+
+        var formData = new FormData();
+        formData.append("name", name);
+        formData.append("category", category);
+        formData.append("price", String(price));
+        formData.append("quantity", String(quantity));
+        formData.append("unit", unit);
+        if (description) formData.append("description", description);
+        if (imageFile) formData.append("produceImage", imageFile);
+
+        try {
+          await HarvConnectAPI.products.create(formData);
+          HarvConnectComponents.closeModal();
+          HarvConnectComponents.showToast("Product added successfully!", "success");
+          loadProducts();
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed to add product: " + err.message, "error");
+        }
+      };
+
+      window.openEditModal = function (id) {
+        var product = myProducts.find(function (p) { return p.id === id; });
+        if (!product) return;
+
+        var categoriesHtml = Object.keys(HarvConnectUtils.CATEGORIES).map(function (k) {
+          return '<option value="' + k + '"' + (k === product.category ? " selected" : "") + ">" + HarvConnectUtils.CATEGORIES[k] + "</option>";
+        }).join("");
+        var unitsHtml = HarvConnectUtils.UNITS.map(function (u) {
+          return '<option value="' + u + '"' + (u === product.unit ? " selected" : "") + ">" + u + "</option>";
+        }).join("");
+
+        var formHtml =
+          '<form id="editProductForm">' +
+            '<div class="hc-form-group"><label>Product Name</label><input type="text" id="epName" class="hc-input" value="' + (product.name || "") + '" /></div>' +
+            '<div class="hc-form-group"><label>Category</label><select id="epCategory" class="hc-select">' + categoriesHtml + "</select></div>" +
+            '<div class="hc-form-group"><label>Price/Unit (GH\u20B5)</label><input type="number" id="epPrice" class="hc-input" value="' + (product.price || "") + '" min="0.01" step="0.01" /></div>' +
+            '<div class="hc-form-group"><label>Quantity</label><input type="number" id="epQuantity" class="hc-input" value="' + (product.quantity || "") + '" min="1" /></div>' +
+            '<div class="hc-form-group"><label>Unit</label><select id="epUnit" class="hc-select">' + unitsHtml + "</select></div>" +
+            '<div class="hc-form-group"><label>Description</label><textarea id="epDescription" class="hc-textarea">' + (product.description || "") + "</textarea></div>" +
+          "</form>";
+
+        HarvConnectComponents.showModal("Edit Product", formHtml, [
+          { label: "Cancel", className: "hc-btn hc-btn-ghost", onclick: "HarvConnectComponents.closeModal()" },
+          { label: "Save Changes", className: "hc-btn hc-btn-primary", onclick: "submitEditProduct('" + id + "')" },
+        ]);
+      };
+
+      window.submitEditProduct = async function (id) {
+        var payload = {
+          name: document.getElementById("epName").value.trim(),
+          category: document.getElementById("epCategory").value,
+          price: parseFloat(document.getElementById("epPrice").value),
+          quantity: parseInt(document.getElementById("epQuantity").value, 10),
+          unit: document.getElementById("epUnit").value,
+          description: document.getElementById("epDescription").value.trim(),
+        };
+
+        try {
+          await HarvConnectAPI.products.update(id, payload);
+          HarvConnectComponents.closeModal();
+          HarvConnectComponents.showToast("Product updated!", "success");
+          loadProducts();
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed to update: " + err.message, "error");
+        }
+      };
+
+      window.deleteProduct = function (id) {
+        HarvConnectComponents.showModal("Delete Product", "<p>Are you sure you want to remove this product from the marketplace?</p>", [
+          { label: "Cancel", className: "hc-btn hc-btn-ghost", onclick: "HarvConnectComponents.closeModal()" },
+          { label: "Delete", className: "hc-btn hc-btn-danger", onclick: "confirmDelete('" + id + "')" },
+        ]);
+      };
+
+      window.confirmDelete = async function (id) {
+        try {
+          await HarvConnectAPI.products.delete(id);
+          HarvConnectComponents.closeModal();
+          HarvConnectComponents.showToast("Product removed.", "success");
+          loadProducts();
+        } catch (err) {
+          HarvConnectComponents.showToast("Failed to delete: " + err.message, "error");
+        }
+      };
+
+      loadProducts();
+    })();
+  </script>
+</body>
+</html>

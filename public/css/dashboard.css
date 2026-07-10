@@ -1,0 +1,194 @@
+/* ========================================
+   HarvConnect Dashboard CSS
+   ======================================== */
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid var(--hc-border);
+  border-radius: var(--hc-radius-lg);
+  padding: 20px;
+}
+
+.stat-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--hc-green);
+  margin-bottom: 4px;
+}
+
+.stat-card-label {
+  font-size: 13px;
+  color: var(--hc-text-gray);
+}
+
+/* --- Product Management Grid --- */
+.products-manage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.product-manage-card {
+  background: #fff;
+  border: 1px solid var(--hc-border);
+  border-radius: var(--hc-radius-lg);
+  overflow: hidden;
+}
+
+.product-manage-img {
+  width: 100%;
+  height: 180px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.product-manage-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-manage-img .placeholder-icon {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ccc;
+  font-size: 36px;
+  background: linear-gradient(135deg, #f0f9f4, #e8f5e9);
+}
+
+.product-manage-body {
+  padding: 16px;
+}
+
+.product-manage-body h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.product-manage-meta {
+  font-size: 13px;
+  color: var(--hc-text-gray);
+  margin-bottom: 8px;
+}
+
+.product-manage-price {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--hc-green);
+  margin-bottom: 12px;
+}
+
+.product-manage-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* --- Transport Dashboard --- */
+.transport-status-card {
+  background: #fff;
+  border: 1px solid var(--hc-border);
+  border-radius: var(--hc-radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.transport-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.transport-toggle {
+  position: relative;
+  width: 52px;
+  height: 28px;
+}
+
+.transport-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.transport-toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.transport-toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.transport-toggle input:checked + .transport-toggle-slider {
+  background: var(--hc-green);
+}
+
+.transport-toggle input:checked + .transport-toggle-slider::before {
+  transform: translateX(24px);
+}
+
+.transport-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.transport-info-item {
+  padding: 16px;
+  background: var(--hc-green-bg);
+  border-radius: var(--hc-radius);
+}
+
+.transport-info-item label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hc-text-gray);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.transport-info-item span {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--hc-text);
+}
+
+@media (max-width: 768px) {
+  .products-manage-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+}

@@ -162,15 +162,47 @@ const getUserOrders = async (userId, role) => {
     where: whereClause,
     include: {
       product: {
-        select: { name: true, category: true }, // Bring in some product details for the frontend
+        select: { name: true, category: true },
       },
     },
-    orderBy: { createdAt: "desc" }, // Newest first
+    orderBy: { createdAt: "desc" },
   });
+};
+
+const getOrderById = async (orderId, userId, userRole) => {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      product: { select: { name: true, category: true, imageUrl: true } },
+      buyer: { select: { id: true, fullName: true, phone: true } },
+      farmer: { select: { id: true, fullName: true, phone: true } },
+      transporter: {
+        select: {
+          id: true,
+          fullName: true,
+          phone: true,
+          transportProfile: { select: { vehicleType: true } },
+        },
+      },
+      tracking: true,
+    },
+  });
+
+  if (!order) throw new AppError("Order not found", 404);
+
+  const canAccess =
+    order.buyerId === userId ||
+    order.farmerId === userId ||
+    order.transporterId === userId ||
+    userRole === "ADMIN";
+  if (!canAccess) throw new AppError("Access denied", 403);
+
+  return order;
 };
 
 module.exports = {
   createOrder,
   updateOrderStatus,
   getUserOrders,
+  getOrderById,
 };
