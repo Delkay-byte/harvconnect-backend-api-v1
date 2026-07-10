@@ -3,6 +3,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
+const path = require("path");
 
 const swaggerSpecs = require("./config/swagger");
 const { APP_VERSION } = require("./config/app");
@@ -54,6 +55,8 @@ if (process.env.NODE_ENV !== "test") {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Serve static assets from the public directory
+app.use(express.static(path.join(__dirname, "../public")));
 
 /* -------------------------------------------------------------------------- */
 /*                              Swagger Documentation                         */
@@ -78,11 +81,7 @@ app.use(
 /* -------------------------------------------------------------------------- */
 
 app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Welcome to the HarvConnect API 🚜",
-    documentation: "/api-docs",
-  });
+  res.redirect("/login.html");
 });
 
 app.get("/api/v1/health", (req, res) => {
