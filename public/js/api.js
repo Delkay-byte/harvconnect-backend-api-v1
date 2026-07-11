@@ -1,5 +1,5 @@
 const HarvConnectAPI = (() => {
-  const BASE_URL = "http://localhost:5000/api/v1";
+  const BASE_URL = "/api/v1";
 
   async function request(method, endpoint, body, isFormData) {
     const headers = {};

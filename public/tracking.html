@@ -293,7 +293,7 @@
         var token = sessionStorage.getItem("hc_token");
         if (!token) return;
         try {
-          socket = io("http://localhost:5000", {
+          socket = io(window.location.origin, {
             auth: { token: token },
             reconnection: true,
           });
